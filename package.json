@@ -1,0 +1,38 @@
+{
+    "name": "fvtt-translator",
+    "version": "1.0.0",
+    "main": "./out/main/index.js",
+    "author": "Ezith",
+    "description": "FVTT Translator Tool",
+    "scripts": {
+        "dev": "electron-vite dev",
+        "build": "electron-vite build",
+        "preview": "electron-vite preview"
+    },
+    "dependencies": {
+        "@babel/parser": "latest",
+        "@electron-toolkit/preload": "latest",
+        "@electron-toolkit/utils": "latest",
+        "adm-zip": "^0.5.16",
+        "lucide-react": "latest",
+        "magic-string": "latest",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "zustand": "^5.0.10"
+    },
+    "devDependencies": {
+        "@electron-toolkit/tsconfig": "latest",
+        "@types/adm-zip": "^0.5.7",
+        "@types/node": "^18.0.0",
+        "@types/react": "^18.0.0",
+        "@types/react-dom": "^18.0.0",
+        "@vitejs/plugin-react": "latest",
+        "autoprefixer": "^10.4.16",
+        "electron": "latest",
+        "electron-vite": "latest",
+        "postcss": "^8.4.32",
+        "tailwindcss": "^3.4.1",
+        "typescript": "^5.0.0",
+        "vite": "latest"
+    }
+}

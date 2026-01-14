@@ -1,0 +1,91 @@
+# FVTT 模组翻译工具 (FVTT Translator)
+
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Electron](https://img.shields.io/badge/Electron-v28+-orange)
+![React](https://img.shields.io/badge/React-v18-blue)
+
+**FVTT Translator** 是一款专为 Foundry VTT 模组汉化者设计的现代化翻译工具。它集成了 AI 自动翻译、术语表管理、双语对照编辑以及一键打包导出功能，旨在极大地简化模组汉化的工作流程。
+
+## ✨ 核心特性
+
+- **🎨 现代陶塑风格界面 (Claymorphism)**
+  - 精美的 UI 设计，悬浮玻璃拟态面板，提供舒适的视觉体验。
+  - 响应式布局，支持浅色/深色模式（开发中）。
+
+- **🤖 AI 智能翻译**
+  - 支持 **OpenAI**、**DeepSeek**、**Gemini** 等多种大模型接口。
+  - 支持自定义 API 端点 (Base URL) 和模型参数 (Temperature)。
+  - **上下文感知**：智能识别并在翻译时保持 HTML 标签和 Foundry 特有语法代码。
+
+- **📚 强大的术语管理**
+  - 内置术语表管理器，支持导入/导出。
+  - 翻译时自动高亮和提示术语，确保专有名词翻译一致性。
+
+- **🛠️ 模组工作区**
+  - **拖拽导入**：直接拖入 JSON 或 JS 文件即可开始翻译。
+  - **智能解析**：自动识别 `en.json` 语言文件和 Babele 映射文件。
+  - **文件暂存**：支持多文件同时管理，按类型（Lang/Babele/Script）分组。
+
+- **📦 一键导出**
+  - 自动生成符合规范的模组结构 (`module.json`, `lang/`, `packs/`).
+  - 内置 **Babele** 支持，自动生成 `babele.register` 脚本。
+  - 支持多种输出格式：仅译文、双语对照、保持原样。
+
+## 🚀 快速开始
+
+### 开发环境运行
+
+确保您已安装 [Node.js](https://nodejs.org/) (推荐 v18+)。
+
+1. **克隆仓库**
+   ```bash
+   git clone https://github.com/YourUsername/fvtt-translator.git
+   cd fvtt-translator
+   ```
+
+2. **安装依赖**
+   ```bash
+   npm install
+   # 或者使用 yarn
+   yarn install
+   ```
+
+3. **启动应用**
+   ```bash
+   npm run dev
+   ```
+
+### 打包构建
+
+构建适用于 Windows 的可执行文件：
+
+```bash
+npm run build
+```
+
+构建产物将位于 `out` 或 `dist` 目录下。
+
+## 📖 使用指南
+
+1. **打开项目**：选择一个现有的 FVTT 模组文件夹，或直接拖入单独的 JSON 文件。
+2. **配置翻译**：在设置中配置您的 AI API Key。
+3. **开始翻译**：
+   - 使用左侧文件列表导航文件。
+   - 点击"自动翻译"让 AI 帮您完成初稿。
+   - 使用"术语表"面板管理专有名词。
+4. **导出模组**：进入工作区，点击导出按钮，生成可直接放入 FVTT `Data/modules` 的汉化包。
+
+## 🛠️ 技术栈
+
+- **Core**: Electron, React 18, TypeScript
+- **State Management**: Zustand
+- **Styling**: TailwindCSS (Claymorphism Design)
+- **Tooling**: Vite, Electron-Vite
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！如果您有好的建议或发现了 Bug，请随时反馈。
+
+## 📄 许可证
+
+本项目采用 [MIT License](LICENSE) 许可证。
