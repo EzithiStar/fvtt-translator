@@ -35,7 +35,7 @@ export function SettingsAbout() {
                 </div>
 
                 <div className="flex justify-center gap-6">
-                    <a href="https://github.com/Ezith/fvtt-translator" target="_blank" rel="noreferrer"
+                    <a href="https://github.com/EzithiStar/fvtt-translator" target="_blank" rel="noreferrer"
                         className="p-4 rounded-2xl bg-white text-slate-400 border border-slate-100 hover:border-slate-300 hover:text-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all">
                         <Github size={24} />
                     </a>

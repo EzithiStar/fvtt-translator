@@ -33,37 +33,17 @@
 
 ## 🚀 快速开始
 
-### 开发环境运行
+### 📥 直接下载使用（推荐）
 
-确保您已安装 [Node.js](https://nodejs.org/) (推荐 v18+)。
+无需安装任何开发环境，下载即用！
 
-1. **克隆仓库**
-   ```bash
-   git clone https://github.com/YourUsername/fvtt-translator.git
-   cd fvtt-translator
-   ```
+1. 前往 [**Releases 页面**](https://github.com/EzithiStar/fvtt-translator/releases)
+2. 下载最新版本的 **FVTT-Translator-Setup-x.x.x.zip**（绿色免安装）或 **.exe**（安装版）
+3. 解压后双击 `FVTT Translator.exe` 即可启动
 
-2. **安装依赖**
-   ```bash
-   npm install
-   # 或者使用 yarn
-   yarn install
-   ```
+> 💡 查看 [CHANGELOG.md](./CHANGELOG.md) 了解每个版本的更新内容。
 
-3. **启动应用**
-   ```bash
-   npm run dev
-   ```
-
-### 打包构建
-
-构建适用于 Windows 的可执行文件：
-
-```bash
-npm run build
-```
-
-构建产物将位于 `out` 或 `dist` 目录下。
+---
 
 ## 📖 使用指南
 
@@ -75,6 +55,8 @@ npm run build
    - 使用"术语表"面板管理专有名词。
 4. **导出模组**：进入工作区，点击导出按钮，生成可直接放入 FVTT `Data/modules` 的汉化包。
 
+---
+
 ## 🛠️ 技术栈
 
 - **Core**: Electron, React 18, TypeScript
@@ -82,10 +64,45 @@ npm run build
 - **Styling**: TailwindCSS (Claymorphism Design)
 - **Tooling**: Vite, Electron-Vite
 
+---
+
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！如果您有好的建议或发现了 Bug，请随时反馈。
 
+---
+
+## 💻 开发者指南
+
+如果您想参与开发或从源码运行，请参考以下步骤：
+
+### 环境要求
+- [Node.js](https://nodejs.org/) v18+
+
+### 开发环境运行
+
+```bash
+# 克隆仓库
+git clone https://github.com/EzithiStar/fvtt-translator.git
+cd fvtt-translator
+
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+```
+
+### 本地打包
+
+```bash
+npm run build    # 构建代码
+npm run package  # 打包成 exe/zip (产物在 dist 目录)
+```
+
+---
+
 ## 📄 许可证
 
 本项目采用 [MIT License](LICENSE) 许可证。
+

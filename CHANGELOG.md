@@ -11,8 +11,11 @@ All notable changes to this project will be documented in this file.
 - **全局主题**: 重构 `App.tsx` 以强制全局使用浅色陶塑主题，移除深色背景冲突，统一仪表盘、设置和工具面板的外观。
 - **面板布局优化**: 在设置界面隐藏主侧边栏，避免三栏布局的拥挤感，提供更专注的设置体验。
 - **悬浮玻璃面板**: 更新工具面板为绝对定位 + 半透明玻璃效果（`backdrop-blur`），覆盖在主内容之上而非挤压布局，宽度增加到 400px。
+- **开源准备**: 更新了项目文档 (README) 和仓库配置 (.gitignore)，移除了非必要的开发文件。
+- **自动化发布**: 配置了 GitHub Actions 工作流 (`release.yml`)，支持通过 Git 标签触发自动构建和发布 Windows 二进制文件 (EXE/ZIP)。
 
 ### 修复
+- **依赖冲突修复**: 解决了 GitHub Actions 构建环境中 `vite` 与 `@types/node` 的版本冲突问题。
 - **TypeScript 编译错误修复**:
   - 解决了所有渲染组件中的 `window.api` 类型错误 (`TranslationEditor`、`Settings`、`App`、`GlossaryManager`、`ExportModal`、`BlacklistModal`)。
   - 修复了 `SettingsModule.tsx` 中的语法错误。
