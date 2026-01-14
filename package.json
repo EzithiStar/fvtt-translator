@@ -42,8 +42,7 @@
         "productName": "FVTT Translator",
         "copyright": "Copyright © 2026 Ezith",
         "directories": {
-            "output": "dist",
-            "buildResources": "build"
+            "output": "dist"
         },
         "files": [
             "out/**/*"
