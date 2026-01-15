@@ -32,7 +32,19 @@ const api = {
     // Blacklist
     getBlacklist: (): Promise<string[]> => ipcRenderer.invoke('blacklist:get'),
     addBlacklist: (key: string): Promise<boolean> => ipcRenderer.invoke('blacklist:add', key),
-    removeBlacklist: (key: string): Promise<boolean> => ipcRenderer.invoke('blacklist:remove', key)
+    removeBlacklist: (key: string): Promise<boolean> => ipcRenderer.invoke('blacklist:remove', key),
+
+    // Window
+    resizeWindow: (width: number, height: number): Promise<void> => ipcRenderer.invoke('window:resize', width, height),
+    getWindowSize: (): Promise<{ width: number; height: number }> => ipcRenderer.invoke('window:getSize'),
+
+    // Bilingual Export
+    generateBilingual: (translatedData: any, originalData: any, threshold?: number): Promise<any> =>
+        ipcRenderer.invoke('export:generateBilingual', translatedData, originalData, threshold),
+
+    // File operations for backup management
+    deleteFile: (path: string): Promise<void> => ipcRenderer.invoke('fs:deleteFile', path),
+    fileExists: (path: string): Promise<boolean> => ipcRenderer.invoke('fs:fileExists', path)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

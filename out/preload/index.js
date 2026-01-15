@@ -29,7 +29,15 @@ const api = {
   // Blacklist
   getBlacklist: () => electron.ipcRenderer.invoke("blacklist:get"),
   addBlacklist: (key) => electron.ipcRenderer.invoke("blacklist:add", key),
-  removeBlacklist: (key) => electron.ipcRenderer.invoke("blacklist:remove", key)
+  removeBlacklist: (key) => electron.ipcRenderer.invoke("blacklist:remove", key),
+  // Window
+  resizeWindow: (width, height) => electron.ipcRenderer.invoke("window:resize", width, height),
+  getWindowSize: () => electron.ipcRenderer.invoke("window:getSize"),
+  // Bilingual Export
+  generateBilingual: (translatedData, originalData, threshold) => electron.ipcRenderer.invoke("export:generateBilingual", translatedData, originalData, threshold),
+  // File operations for backup management
+  deleteFile: (path) => electron.ipcRenderer.invoke("fs:deleteFile", path),
+  fileExists: (path) => electron.ipcRenderer.invoke("fs:fileExists", path)
 };
 if (process.contextIsolated) {
   try {

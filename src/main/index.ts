@@ -12,8 +12,10 @@ import { blacklistManager } from './lib/blacklist'
 function createWindow(): void {
     // Create the browser window.
     const mainWindow = new BrowserWindow({
-        width: 900,
-        height: 670,
+        width: 1280,
+        height: 800,
+        minWidth: 900,
+        minHeight: 670,
         show: false,
         autoHideMenuBar: true,
         ...(process.platform === 'linux' ? { icon: join(__dirname, '../../build/icon.png') } : {}),
@@ -40,6 +42,17 @@ function createWindow(): void {
     } else {
         mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
     }
+
+    // Window resize IPC handlers
+    ipcMain.handle('window:resize', (_, width: number, height: number) => {
+        mainWindow.setSize(width, height)
+        mainWindow.center()
+    })
+
+    ipcMain.handle('window:getSize', () => {
+        const [width, height] = mainWindow.getSize()
+        return { width, height }
+    })
 }
 
 // This method will be called when Electron has finished
@@ -67,6 +80,8 @@ app.whenReady().then(() => {
     ipcMain.handle('fs:showSaveDialog', (_, p) => fileSystem.showSaveDialog(p))
     ipcMain.handle('fs:extractZip', (_, p) => fileSystem.extractZip(p))
     ipcMain.handle('fs:calculateProgress', (_, p) => fileSystem.calculateProgress(p))
+    ipcMain.handle('fs:deleteFile', (_, p) => fileSystem.deleteFile(p))
+    ipcMain.handle('fs:fileExists', (_, p) => fileSystem.fileExists(p))
 
     ipcMain.handle('parser:scanFile', (_, p) => codeParser.scanFile(p))
     ipcMain.handle('parser:applyPatch', (_, p, t) => codeParser.applyPatch(p, t))
@@ -91,6 +106,11 @@ app.whenReady().then(() => {
     ipcMain.handle('blacklist:get', () => blacklistManager.getList())
     ipcMain.handle('blacklist:add', (_, key) => blacklistManager.add(key))
     ipcMain.handle('blacklist:remove', (_, key) => blacklistManager.remove(key))
+
+    // Bilingual Export
+    ipcMain.handle('export:generateBilingual', (_, translatedData, originalData, threshold) =>
+        moduleExporter.generateBilingual(translatedData, originalData, threshold)
+    )
 
     createWindow()
 

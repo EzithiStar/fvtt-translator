@@ -1,9 +1,12 @@
 import { useI18n } from '../../lib/i18n'
 import { Github, Globe, Heart } from 'lucide-react'
 
+// 版本号由 Vite 在构建时从 package.json 注入
+declare const __APP_VERSION__: string
+
 export function SettingsAbout() {
     const { t, lang } = useI18n()
-    const version = '1.0.0' // Should pull from package.json in real app
+    const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0'
 
     return (
         <div className="space-y-8 animate-fade-in text-center pt-8">

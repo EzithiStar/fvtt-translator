@@ -1,30 +1,54 @@
-# Changelog
+# Changelog / 更新日志
 
-All notable changes to this project will be documented in this file.
-所有项目的重大更改都将记录在此文件中。
+> 📌 **说明**: 本文件记录每个版本的更新内容。发布 Release 时，GitHub Actions 会自动读取最新版本的更新说明。
+> 
+> **版本号规则**:
+> - `+0.0.1` - 小修复、Bug 修复、UI 微调
+> - `+0.1.0` - 新功能、较大改动
+> - `+1.0.0` - 重大版本更新、不兼容变更
 
-## [0.3.2] - 2026-01-15
+---
 
-### 变更
-- **设置界面刷新**: 使用新的陶塑 (Claymorphism) 设计系统更新了设置模块 (常规、AI、模组、关于)。
-- **模态框刷新**: 使用陶塑设计更新了导出模态框、黑名单模态框和术语表管理器（浅色背景、圆角、渐变按钮、柔和阴影）。
-- **全局主题**: 重构 `App.tsx` 以强制全局使用浅色陶塑主题，移除深色背景冲突，统一仪表盘、设置和工具面板的外观。
-- **面板布局优化**: 在设置界面隐藏主侧边栏，避免三栏布局的拥挤感，提供更专注的设置体验。
-- **悬浮玻璃面板**: 更新工具面板为绝对定位 + 半透明玻璃效果（`backdrop-blur`），覆盖在主内容之上而非挤压布局，宽度增加到 400px。
-- **开源准备**: 更新了项目文档 (README) 和仓库配置 (.gitignore)，移除了非必要的开发文件。
-- **自动化发布**: 配置了 GitHub Actions 工作流 (`release.yml`)，支持通过 Git 标签触发自动构建和发布 Windows 二进制文件 (EXE/ZIP)。
+## [1.1.0] - 2026-01-15
 
-### 修复
-- **依赖冲突修复**: 解决了 GitHub Actions 构建环境中 `vite` 与 `@types/node` 的版本冲突问题。
-- **TypeScript 编译错误修复**:
-  - 解决了所有渲染组件中的 `window.api` 类型错误 (`TranslationEditor`、`Settings`、`App`、`GlossaryManager`、`ExportModal`、`BlacklistModal`)。
-  - 修复了 `SettingsModule.tsx` 中的语法错误。
-  - 修复了 `GlossaryManager.tsx` 中的隐式 `any` 类型。
-  - 修复了 `types.ts` 中的 `ModuleManifest` 接口结构——闭合括号位置错误导致 `babeleMappingDir` 和 `babeleRegisterScript` 在接口外部。
-  - 向 `ModuleManifest` 接口添加了缺失属性 (`styles`、`packs`)。
-  - 修复了 `i18n.tsx` 中的重复属性名 (versionInfo、developer、toolName、github)。
-  - 向中英文词典添加了缺失的翻译键：`noFilesFound`、`selectProjectPrompt`、`saveConfig`、`confirm`、`aiProvider`、`apiKey`、`modelName`、`interfaceLanguage`、`moduleConfiguration`。
-  - 修复了 `exporter.ts` 访问 `moduleData` 对象上未定义属性的问题，添加了 `styles`、`packs`、`license`、`readme`。
+> 🎉 **重大更新**：新增多项实用功能，提升翻译体验！
+
+### ✨ 新增功能
+- **窗口分辨率设置**: 在设置-常规中新增分辨率选择器（小/中/大/超大），默认分辨率从 900×670 增加到 1280×800
+- **文件夹层级导航**: 侧边栏文件列表现在显示为可展开的目录树结构，点击文件夹可展开/折叠
+- **深色主题**: 在设置-常规中开启深色模式（实验性功能）
+- **版本号自动同步**: 设置-关于页面的版本号现在从 package.json 自动读取
+- **智能双语导出**: 
+  - 开启翻译时自动备份原文件 (`.original`)
+  - 短语 (<50字符) 显示为 `中文 英文`，长句仅保留译文
+  - 模组工作区的"双语"选项现在使用智能双语生成
+
+### 🐛 修复
+- **视图导航修复**: 从模组工作区返回时，现在能正确返回到之前的编辑器界面
+- **翻译状态持久化**: 完善了视图切换时的状态保持逻辑，翻译进度不再丢失
+
+### 🎨 界面优化
+- **导出模块界面**: 修复 Babele 设置区域和作者卡片的配色问题，统一浅色陶塑风格
+
+---
+
+## [1.0.0] - 2026-01-15 13:00
+
+### ✨ 新增功能
+- **自动化发布**: 配置 GitHub Actions (`release.yml`)，支持 Git 标签触发自动构建和发布 Windows EXE/ZIP
+- **开源准备**: 更新了 README 和 .gitignore，移除非必要开发文件
+
+### 🎨 界面优化
+- **陶塑风格主题**: 全面应用 Claymorphism 设计系统到设置、模态框、工具面板
+- **面板布局优化**: 设置界面隐藏主侧边栏，避免三栏拥挤
+- **悬浮玻璃面板**: 工具面板使用绝对定位 + `backdrop-blur` 半透明效果
+
+### 🐛 修复
+- **翻译状态持久化**: 解决切换视图后翻译进度丢失的问题（使用 Zustand 全局状态）
+- **依赖冲突**: 修复 GitHub Actions 中 vite 与 @types/node 版本冲突
+- **TypeScript 编译错误**: 修复所有渲染组件中的类型错误
+
+---
 
 ## [0.3.1] - 2026-01-14
 

@@ -2,27 +2,40 @@ import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, Save, Sparkles, AlertCircle, FilePlus, BookPlus, X, PackagePlus, EyeOff, Eye } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
 import { useModuleBuilder } from '../lib/moduleBuilderStore'
+import { useTranslationStore, TranslationItem } from '../lib/translationStore'
 import { PromptModal } from './PromptModal'
 
-interface TranslationItem {
-    id: string
-    original: string
-    translation: string
-    isIgnored?: boolean
-}
+// TranslationItem is now imported from translationStore
 
 export function TranslationEditor({ file, projectPath, onSave, onBack }: { file: string, projectPath: string | null, onSave: (items: TranslationItem[]) => void, onBack: () => void }): JSX.Element {
     const { t } = useI18n()
-    const [items, setItems] = useState<TranslationItem[]>([])
     const { addStagedFile, autoDetectType } = useModuleBuilder()
+
+    // 使用全局 store 代替 useState，切换视图时保持状态
+    const {
+        items,
+        setItems,
+        updateItemsBatch,
+        isBabeleFormat,
+        setIsBabeleFormat,
+        translating,
+        setTranslating,
+        currentFile,
+        setCurrentFile,
+        shouldReload
+    } = useTranslationStore()
+
     const [loading, setLoading] = useState(true)
-    const [translating, setTranslating] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const [isBabeleFormat, setIsBabeleFormat] = useState(false)
-
     useEffect(() => {
-        loadContent()
+        // 只在文件变化时重新加载
+        if (shouldReload(file)) {
+            setCurrentFile(file)
+            loadContent()
+        } else {
+            setLoading(false)
+        }
     }, [file])
 
     const loadContent = async () => {
@@ -30,6 +43,17 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
         try {
             if (file.endsWith('.json')) {
                 const data = await (window as any).api.readJson(file)
+
+                // 自动备份原文件（如果尚未备份）
+                const backupPath = file + '.original'
+                try {
+                    await (window as any).api.readFile(backupPath)
+                    // 备份已存在，不做任何事
+                } catch {
+                    // 备份不存在，创建备份
+                    await (window as any).api.writeJson(backupPath, data)
+                    console.log('Created original backup:', backupPath)
+                }
 
                 // Detect Babele format
                 const isBabele = data.hasOwnProperty('label') && (data.hasOwnProperty('entries') || data.hasOwnProperty('mapping'))
@@ -204,16 +228,8 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
 
         try {
             while (isTranslatingRef.current) {
-                // Get fresh list of items
-                // Use a promise to get the latest items state safely
-                let currentItems: TranslationItem[] = []
-                await new Promise<void>(resolve => {
-                    setItems(prev => {
-                        currentItems = prev
-                        resolve()
-                        return prev
-                    })
-                })
+                // Get fresh list of items from store
+                const currentItems = useTranslationStore.getState().items
 
                 // Find untranslated items that haven't been attempted in this session
                 const untranslated = currentItems.filter(i =>
@@ -264,25 +280,13 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
 
                 // Update state with results
                 if (successCount > 0) {
-                    setItems(prev => {
-                        // Create a map of updates: original -> translation
-                        // We use a Map to handle potential multiple updates for same original in one batch (though unlikely with slice)
-                        const updates = new Map<string, string>()
-                        results.forEach(res => {
-                            if (res) {
-                                updates.set(res.original, res.translation)
-                            }
-                        })
-
-                        // Apply updates to ALL matching items, enabling deduplication
-                        return prev.map(item => {
-                            // If this item's original text has a new translation, use it
-                            if (updates.has(item.original)) {
-                                return { ...item, translation: updates.get(item.original)! }
-                            }
-                            return item
-                        })
+                    const updates = new Map<string, string>()
+                    results.forEach(res => {
+                        if (res) {
+                            updates.set(res.original, res.translation)
+                        }
                     })
+                    updateItemsBatch(updates)
                 }
 
                 // Small delay

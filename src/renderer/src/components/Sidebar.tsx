@@ -1,6 +1,162 @@
-import { useState, useEffect } from 'react'
-import { Home, Settings, FileText, FolderOpen, Box, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Home, Settings, FileText, FolderOpen, Box, ChevronLeft, ChevronRight, ChevronDown, Folder } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
+
+// 树节点接口
+interface TreeNode {
+    name: string           // 显示名称
+    path: string           // 完整路径
+    isFolder: boolean      // 是否为文件夹
+    children: TreeNode[]   // 子节点
+}
+
+// 从平铺文件列表构建树结构
+function buildTree(files: string[], projectPath: string | null): TreeNode[] {
+    if (!projectPath || files.length === 0) return []
+
+    const root: TreeNode[] = []
+    const normalizedBase = projectPath.replace(/\\/g, '/')
+
+    for (const file of files) {
+        const normalizedFile = file.replace(/\\/g, '/')
+        const relativePath = normalizedFile.replace(normalizedBase, '').replace(/^\//, '')
+        const parts = relativePath.split('/')
+
+        let currentLevel = root
+        let currentPath = normalizedBase
+
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i]
+            currentPath += '/' + part
+            const isLastPart = i === parts.length - 1
+
+            let existing = currentLevel.find(n => n.name === part)
+
+            if (!existing) {
+                existing = {
+                    name: part,
+                    path: currentPath.replace(/\//g, '\\'), // 恢复 Windows 路径格式
+                    isFolder: !isLastPart,
+                    children: []
+                }
+                currentLevel.push(existing)
+            }
+
+            if (!isLastPart) {
+                currentLevel = existing.children
+            }
+        }
+    }
+
+    // 排序：文件夹在前，文件在后，按名称排序
+    const sortNodes = (nodes: TreeNode[]): TreeNode[] => {
+        return nodes.sort((a, b) => {
+            if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1
+            return a.name.localeCompare(b.name)
+        }).map(n => ({ ...n, children: sortNodes(n.children) }))
+    }
+
+    return sortNodes(root)
+}
+
+// 树节点渲染组件（递归）
+interface TreeNodeItemProps {
+    node: TreeNode
+    depth: number
+    collapsed: boolean
+    currentFile: string | null
+    progressMap: Record<string, number>
+    expandedFolders: Set<string>
+    toggleFolder: (path: string) => void
+    onOpenFile: (file: string) => void
+}
+
+function TreeNodeItem({
+    node,
+    depth,
+    collapsed,
+    currentFile,
+    progressMap,
+    expandedFolders,
+    toggleFolder,
+    onOpenFile
+}: TreeNodeItemProps) {
+    const isExpanded = expandedFolders.has(node.path)
+    const isActive = currentFile === node.path
+    const isJson = node.name.endsWith('.json')
+    const progress = progressMap[node.path] ?? null
+
+    if (node.isFolder) {
+        return (
+            <div>
+                <button
+                    onClick={() => toggleFolder(node.path)}
+                    className={`w-full text-left rounded-lg transition-all flex items-center gap-2 p-2 hover:bg-white/60 text-slate-600 hover:text-slate-800`}
+                    style={{ paddingLeft: collapsed ? 8 : 8 + depth * 12 }}
+                >
+                    {!collapsed && (
+                        <span className="text-slate-400 transition-transform" style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                            <ChevronRight size={14} />
+                        </span>
+                    )}
+                    <div className="bg-amber-100 p-1 rounded-md">
+                        <Folder size={14} className="text-amber-500" />
+                    </div>
+                    {!collapsed && <span className="text-xs font-medium truncate">{node.name}</span>}
+                </button>
+                {isExpanded && !collapsed && (
+                    <div className="space-y-0.5">
+                        {node.children.map(child => (
+                            <TreeNodeItem
+                                key={child.path}
+                                node={child}
+                                depth={depth + 1}
+                                collapsed={collapsed}
+                                currentFile={currentFile}
+                                progressMap={progressMap}
+                                expandedFolders={expandedFolders}
+                                toggleFolder={toggleFolder}
+                                onOpenFile={onOpenFile}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    // 文件节点
+    return (
+        <button
+            onClick={() => onOpenFile(node.path)}
+            className={`w-full text-left rounded-lg transition-all flex items-center gap-2 p-2
+                ${isActive
+                    ? 'bg-white border border-blue-200 shadow-sm text-slate-800'
+                    : 'hover:bg-white/60 text-slate-500 hover:text-slate-700 border border-transparent'
+                }`}
+            style={{ paddingLeft: collapsed ? 8 : 8 + depth * 12 }}
+            title={node.name}
+        >
+            <div className={`p-1 rounded-md ${isActive ? (isJson ? 'bg-blue-100' : 'bg-orange-100') : 'bg-slate-100'}`}>
+                {isJson ? (
+                    <FileText size={14} className={isActive ? 'text-blue-500' : 'text-slate-400'} />
+                ) : (
+                    <Box size={14} className={isActive ? 'text-orange-500' : 'text-slate-400'} />
+                )}
+            </div>
+            {!collapsed && (
+                <>
+                    <span className="text-xs font-medium truncate flex-1">{node.name}</span>
+                    {progress !== null && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${progress === 100 ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
+                            {progress}%
+                        </span>
+                    )}
+                </>
+            )}
+        </button>
+    )
+}
 
 interface SidebarProps {
     projectPath: string | null
@@ -28,6 +184,23 @@ export function Sidebar({
     const { t } = useI18n()
     const [progressMap, setProgressMap] = useState<Record<string, number>>({})
     const [collapsed, setCollapsed] = useState(false)
+    const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+
+    // 构建树结构
+    const fileTree = useMemo(() => buildTree(files, projectPath), [files, projectPath])
+
+    // 展开/折叠文件夹
+    const toggleFolder = (path: string) => {
+        setExpandedFolders(prev => {
+            const next = new Set(prev)
+            if (next.has(path)) {
+                next.delete(path)
+            } else {
+                next.add(path)
+            }
+            return next
+        })
+    }
 
     useEffect(() => {
         const fetchProgress = async () => {
@@ -112,66 +285,21 @@ export function Sidebar({
                     )}
                 </div>
 
-                <div className={`${collapsed ? 'px-2' : 'px-3'} space-y-2 pb-4`}>
-                    {files.length > 0 ? (
-                        files.map(file => {
-                            const fileName = file.replace(projectPath || '', '').replace(/^[\\/]/, '') || file.split(/[/\\]/).pop()
-                            const isActive = currentFile === file
-                            const isJson = file.endsWith('.json')
-                            const progress = progressMap[file] !== undefined ? progressMap[file] : null
-
-                            return (
-                                <button
-                                    key={file}
-                                    onClick={() => onOpenFile(file)}
-                                    className={`w-full text-left rounded-xl transition-all flex border
-                                        ${collapsed ? 'p-2 justify-center flex-col gap-1' : 'p-3 flex-col gap-2'}
-                                        ${isActive
-                                            ? 'bg-white border-blue-200 shadow-md transform -translate-y-0.5'
-                                            : 'bg-white/30 border-transparent hover:bg-white/60 hover:border-white/50 hover:shadow-sm text-slate-500 hover:text-slate-700'
-                                        }`}
-                                    title={fileName}
-                                >
-                                    <div className={`flex items-center gap-3 w-full ${collapsed ? 'justify-center' : ''}`}>
-                                        <div className={`p-1.5 rounded-lg transition-colors ${isActive ? (isJson ? 'bg-blue-100' : 'bg-orange-100') : 'bg-slate-100'}`}>
-                                            {isJson ? (
-                                                <FileText size={16} className={isActive ? 'text-blue-500' : 'text-slate-400'} />
-                                            ) : (
-                                                <Box size={16} className={isActive ? 'text-orange-500' : 'text-slate-400'} />
-                                            )}
-                                        </div>
-
-                                        {!collapsed && (
-                                            <>
-                                                <span className={`truncate flex-1 text-sm font-medium ${isActive ? 'text-slate-800' : ''}`}>
-                                                    {fileName}
-                                                </span>
-                                                {progress !== null && (
-                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${progress === 100
-                                                        ? 'bg-green-100 text-green-600'
-                                                        : 'bg-slate-100 text-slate-500'
-                                                        }`}>
-                                                        {progress}%
-                                                    </span>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {!collapsed && progress !== null && (
-                                        <div className="w-full h-1.5 bg-slate-200/50 rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full transition-all duration-500 ${progress === 100
-                                                    ? 'bg-gradient-to-r from-green-400 to-emerald-400'
-                                                    : 'bg-gradient-to-r from-blue-400 to-indigo-400'
-                                                    }`}
-                                                style={{ width: `${progress}%` }}
-                                            />
-                                        </div>
-                                    )}
-                                </button>
-                            )
-                        })
+                <div className={`${collapsed ? 'px-2' : 'px-3'} space-y-1 pb-4`}>
+                    {fileTree.length > 0 ? (
+                        fileTree.map(node => (
+                            <TreeNodeItem
+                                key={node.path}
+                                node={node}
+                                depth={0}
+                                collapsed={collapsed}
+                                currentFile={currentFile}
+                                progressMap={progressMap}
+                                expandedFolders={expandedFolders}
+                                toggleFolder={toggleFolder}
+                                onOpenFile={onOpenFile}
+                            />
+                        ))
                     ) : (
                         !collapsed && (
                             <div className="flex flex-col items-center justify-center py-10 px-4 border-2 border-dashed border-slate-300 rounded-xl mx-1 bg-white/20">

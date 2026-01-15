@@ -145,6 +145,17 @@ class FileSystemHandler {
       return { total: 0, translated: 0, percentage: 0 };
     }
   }
+  async deleteFile(filePath) {
+    await fs.unlink(filePath);
+  }
+  async fileExists(filePath) {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 const fileSystem = new FileSystemHandler();
 var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
@@ -29374,6 +29385,7 @@ class ModuleExporter {
       }
       for (const file of itemsToProcess) {
         let { source, target, type } = file;
+        const outputFormat = file.outputFormat || "translated";
         let content = "";
         try {
           content = await fs__namespace.readFile(source, "utf-8");
@@ -29404,7 +29416,21 @@ class ModuleExporter {
         const safeTarget = target.replace(/\\/g, "/").replace(/^\//, "");
         const targetAbsolute = path__namespace.join(moduleDir, safeTarget);
         await fs__namespace.mkdir(path__namespace.dirname(targetAbsolute), { recursive: true });
-        await fs__namespace.copyFile(source, targetAbsolute);
+        if (source.endsWith(".json") && outputFormat === "bilingual") {
+          const originalPath = source + ".original";
+          try {
+            const originalContent = await fs__namespace.readFile(originalPath, "utf-8");
+            const translatedData = JSON.parse(content);
+            const originalData = JSON.parse(originalContent);
+            const bilingualData = this.generateBilingual(translatedData, originalData);
+            await fs__namespace.writeFile(targetAbsolute, JSON.stringify(bilingualData, null, 2), "utf-8");
+          } catch (e) {
+            console.warn("No original backup found for bilingual, copying as-is:", source);
+            await fs__namespace.copyFile(source, targetAbsolute);
+          }
+        } else {
+          await fs__namespace.copyFile(source, targetAbsolute);
+        }
         if (type === "lang" || safeTarget.startsWith("lang/")) {
           const fileName = path__namespace.basename(safeTarget);
           let langCode = "cn";
@@ -29563,6 +29589,35 @@ class ModuleExporter {
       return {};
     }
   }
+  /**
+   * 生成智能双语对照
+   * @param translatedData 翻译后的 JSON 数据
+   * @param originalData 原始 JSON 数据
+   * @param threshold 字符长度阈值（小于此长度的使用双语）
+   * @returns 双语对照后的 JSON 数据
+   */
+  generateBilingual(translatedData, originalData, threshold = 50) {
+    const merge = (translated, original) => {
+      if (typeof translated === "string" && typeof original === "string") {
+        if (original.length < threshold && translated !== original) {
+          return `${translated} ${original}`;
+        }
+        return translated;
+      }
+      if (Array.isArray(translated) && Array.isArray(original)) {
+        return translated.map((item, i) => merge(item, original[i] ?? item));
+      }
+      if (typeof translated === "object" && typeof original === "object" && translated !== null) {
+        const result = {};
+        for (const key of Object.keys(translated)) {
+          result[key] = merge(translated[key], original?.[key] ?? translated[key]);
+        }
+        return result;
+      }
+      return translated;
+    };
+    return merge(translatedData, originalData);
+  }
 }
 const moduleExporter = new ModuleExporter();
 class GlossaryImporter {
@@ -29667,8 +29722,10 @@ class BlacklistManager {
 const blacklistManager = new BlacklistManager();
 function createWindow() {
   const mainWindow = new electron.BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1280,
+    height: 800,
+    minWidth: 900,
+    minHeight: 670,
     show: false,
     autoHideMenuBar: true,
     ...process.platform === "linux" ? { icon: path$1.join(__dirname, "../../build/icon.png") } : {},
@@ -29691,6 +29748,14 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path$1.join(__dirname, "../renderer/index.html"));
   }
+  electron.ipcMain.handle("window:resize", (_, width, height) => {
+    mainWindow.setSize(width, height);
+    mainWindow.center();
+  });
+  electron.ipcMain.handle("window:getSize", () => {
+    const [width, height] = mainWindow.getSize();
+    return { width, height };
+  });
 }
 electron.app.whenReady().then(() => {
   utils$1.electronApp.setAppUserModelId("com.electron");
@@ -29707,6 +29772,8 @@ electron.app.whenReady().then(() => {
   electron.ipcMain.handle("fs:showSaveDialog", (_, p) => fileSystem.showSaveDialog(p));
   electron.ipcMain.handle("fs:extractZip", (_, p) => fileSystem.extractZip(p));
   electron.ipcMain.handle("fs:calculateProgress", (_, p) => fileSystem.calculateProgress(p));
+  electron.ipcMain.handle("fs:deleteFile", (_, p) => fileSystem.deleteFile(p));
+  electron.ipcMain.handle("fs:fileExists", (_, p) => fileSystem.fileExists(p));
   electron.ipcMain.handle("parser:scanFile", (_, p) => codeParser.scanFile(p));
   electron.ipcMain.handle("parser:applyPatch", (_, p, t) => codeParser.applyPatch(p, t));
   electron.ipcMain.handle("ai:translate", (_, text, config, projectPath) => aiService.translate(text, config, projectPath));
@@ -29723,6 +29790,10 @@ electron.app.whenReady().then(() => {
   electron.ipcMain.handle("blacklist:get", () => blacklistManager.getList());
   electron.ipcMain.handle("blacklist:add", (_, key) => blacklistManager.add(key));
   electron.ipcMain.handle("blacklist:remove", (_, key) => blacklistManager.remove(key));
+  electron.ipcMain.handle(
+    "export:generateBilingual",
+    (_, translatedData, originalData, threshold) => moduleExporter.generateBilingual(translatedData, originalData, threshold)
+  );
   createWindow();
   electron.app.on("activate", function() {
     if (electron.BrowserWindow.getAllWindows().length === 0) createWindow();

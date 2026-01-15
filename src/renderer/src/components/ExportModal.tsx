@@ -417,7 +417,7 @@ export function ExportModal({ isOpen, onClose, projectPath, files, inline = fals
                     {activeTab === 'authors' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="flex justify-between items-center">
-                                <h3 className="text-sm font-bold text-slate-300 uppercase">{t.tabAuthors}</h3>
+                                <h3 className="text-sm font-bold text-slate-600 uppercase">{t.tabAuthors}</h3>
                                 <button type="button" onClick={addAuthor} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded flex items-center gap-1">
                                     <Plus size={14} /> {t.addAuthor || "Add"}
                                 </button>
@@ -425,7 +425,7 @@ export function ExportModal({ isOpen, onClose, projectPath, files, inline = fals
                             {formData.authors.length === 0 && <p className="text-slate-500 text-sm italic py-2">No authors listed.</p>}
                             <div className="space-y-3">
                                 {formData.authors.map((author, idx) => (
-                                    <div key={idx} className="flex gap-2 items-start bg-slate-900/50 p-3 rounded border border-slate-800">
+                                    <div key={idx} className="flex gap-2 items-start bg-slate-50 p-3 rounded-xl border border-slate-200">
                                         <div className="grid grid-cols-2 gap-2 flex-1">
                                             <input value={author.name} onChange={e => updateAuthor(idx, 'name', e.target.value)} placeholder={t.name || "Name"} className="input-field w-full text-sm" />
                                             <input value={author.email || ''} onChange={e => updateAuthor(idx, 'email', e.target.value)} placeholder={t.email || "Email"} className="input-field w-full text-sm" />
@@ -443,7 +443,7 @@ export function ExportModal({ isOpen, onClose, projectPath, files, inline = fals
 
                     {activeTab === 'compatibility' && (
                         <div className="space-y-4 animate-fadeIn">
-                            <h3 className="text-sm font-bold text-slate-300 uppercase">{t.coreVersion}</h3>
+                            <h3 className="text-sm font-bold text-slate-600 uppercase">{t.coreVersion}</h3>
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-xs font-semibold uppercase text-slate-500">{t.minimum}</label>
@@ -465,9 +465,9 @@ export function ExportModal({ isOpen, onClose, projectPath, files, inline = fals
                         <div className="space-y-6 animate-fadeIn">
                             {/* Systems */}
                             <div className="space-y-3">
-                                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                                    <h3 className="text-sm font-bold text-slate-300 uppercase">{t.systems}</h3>
-                                    <button type="button" onClick={() => addRelationship('systems', 'system')} className="text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 px-2 py-1 rounded flex items-center gap-1">
+                                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                                    <h3 className="text-sm font-bold text-slate-600 uppercase">{t.systems}</h3>
+                                    <button type="button" onClick={() => addRelationship('systems', 'system')} className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-lg flex items-center gap-1">
                                         <Plus size={14} /> {t.addSystem || "Add"}
                                     </button>
                                 </div>
@@ -507,7 +507,7 @@ export function ExportModal({ isOpen, onClose, projectPath, files, inline = fals
 
                     {activeTab === 'babele' && (
                         <div className="space-y-4 animate-fadeIn">
-                            <div className="p-3 bg-blue-900/20 border border-blue-900/50 rounded text-blue-200 text-sm">
+                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 text-sm">
                                 <p>{t.babeleHelp}</p>
                             </div>
                             <div className="space-y-1">

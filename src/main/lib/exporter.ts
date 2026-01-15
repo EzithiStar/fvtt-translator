@@ -72,6 +72,7 @@ export class ModuleExporter {
 
             for (const file of itemsToProcess) {
                 let { source, target, type } = file
+                const outputFormat = (file as any).outputFormat || 'translated'
 
                 let content = ''
                 try {
@@ -110,7 +111,26 @@ export class ModuleExporter {
 
                 // Ensure parent directory exists
                 await fs.mkdir(path.dirname(targetAbsolute), { recursive: true })
-                await fs.copyFile(source, targetAbsolute)
+
+                // Handle outputFormat for JSON files
+                if (source.endsWith('.json') && outputFormat === 'bilingual') {
+                    // 智能双语处理：读取原文备份并生成双语对照
+                    const originalPath = source + '.original'
+                    try {
+                        const originalContent = await fs.readFile(originalPath, 'utf-8')
+                        const translatedData = JSON.parse(content)
+                        const originalData = JSON.parse(originalContent)
+                        const bilingualData = this.generateBilingual(translatedData, originalData)
+                        await fs.writeFile(targetAbsolute, JSON.stringify(bilingualData, null, 2), 'utf-8')
+                    } catch (e) {
+                        // 如果没有原文备份，直接复制原文件
+                        console.warn('No original backup found for bilingual, copying as-is:', source)
+                        await fs.copyFile(source, targetAbsolute)
+                    }
+                } else {
+                    // 其他格式直接复制
+                    await fs.copyFile(source, targetAbsolute)
+                }
 
                 // Metadata Collection
                 if (type === 'lang' || safeTarget.startsWith('lang/')) {
@@ -312,6 +332,46 @@ export class ModuleExporter {
             // File might not exist, return empty
             return {}
         }
+    }
+
+    /**
+     * 生成智能双语对照
+     * @param translatedData 翻译后的 JSON 数据
+     * @param originalData 原始 JSON 数据
+     * @param threshold 字符长度阈值（小于此长度的使用双语）
+     * @returns 双语对照后的 JSON 数据
+     */
+    generateBilingual(
+        translatedData: any,
+        originalData: any,
+        threshold: number = 50
+    ): any {
+        const merge = (translated: any, original: any): any => {
+            if (typeof translated === 'string' && typeof original === 'string') {
+                // 智能判断：短语使用双语，长句仅保留翻译
+                if (original.length < threshold && translated !== original) {
+                    // 格式：中文 英文（用空格分隔）
+                    return `${translated} ${original}`
+                }
+                return translated
+            }
+
+            if (Array.isArray(translated) && Array.isArray(original)) {
+                return translated.map((item, i) => merge(item, original[i] ?? item))
+            }
+
+            if (typeof translated === 'object' && typeof original === 'object' && translated !== null) {
+                const result: any = {}
+                for (const key of Object.keys(translated)) {
+                    result[key] = merge(translated[key], original?.[key] ?? translated[key])
+                }
+                return result
+            }
+
+            return translated
+        }
+
+        return merge(translatedData, originalData)
     }
 }
 

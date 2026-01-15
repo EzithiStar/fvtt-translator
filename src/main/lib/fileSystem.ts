@@ -144,6 +144,19 @@ export class FileSystemHandler {
             return { total: 0, translated: 0, percentage: 0 }
         }
     }
+
+    async deleteFile(filePath: string): Promise<void> {
+        await fs.unlink(filePath)
+    }
+
+    async fileExists(filePath: string): Promise<boolean> {
+        try {
+            await fs.access(filePath)
+            return true
+        } catch {
+            return false
+        }
+    }
 }
 
 export const fileSystem = new FileSystemHandler()

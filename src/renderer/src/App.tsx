@@ -11,12 +11,29 @@ import './index.css'
 export default function App(): JSX.Element {
     const { t } = useI18n()
     const [view, setView] = useState<'home' | 'editor' | 'settings' | 'workspace'>('home')
+    const [previousView, setPreviousView] = useState<'home' | 'editor' | 'settings'>('home') // 记录上一个视图
     const [currentFile, setCurrentFile] = useState<string | null>(null)
     const [projectPath, setProjectPath] = useState<string | null>(null)
     const [projectFiles, setProjectFiles] = useState<string[]>([])
     const [activeTool, setActiveTool] = useState<'glossary' | 'export' | null>(null)
     const [toolDock, setToolDock] = useState<'right' | 'bottom'>('right')
     const [loading, setLoading] = useState(false)
+
+    // 切换到工作区时记住当前视图
+    const goToWorkspace = () => {
+        setPreviousView(view === 'workspace' ? 'home' : view as 'home' | 'editor' | 'settings')
+        setView('workspace')
+    }
+
+    // 从工作区返回时恢复之前的视图
+    const goBackFromWorkspace = () => {
+        // 如果之前在编辑器且有文件，返回编辑器；否则返回主页
+        if (previousView === 'editor' && currentFile) {
+            setView('editor')
+        } else {
+            setView('home')
+        }
+    }
 
     // Lifted Logic: Open Project
     const handleOpenProject = async () => {
@@ -105,7 +122,7 @@ export default function App(): JSX.Element {
                             <WorkspaceView
                                 projectPath={projectPath}
                                 files={projectFiles}
-                                onBack={() => setView('home')}
+                                onBack={goBackFromWorkspace}
                             />
                         ) : (
                             <div className="flex-1 overflow-hidden relative border-r border-[#E5DDD5]">
@@ -173,7 +190,7 @@ export default function App(): JSX.Element {
 
                 {/* Workspace Button */}
                 <button
-                    onClick={() => setView('workspace')}
+                    onClick={goToWorkspace}
                     className={`clay-icon-btn ${view === 'workspace' ? 'active' : ''}`}
                     title="模组工作区"
                 >
