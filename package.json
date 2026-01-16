@@ -1,6 +1,6 @@
 {
     "name": "fvtt-translator",
-    "version": "1.1.8",
+    "version": "1.2.1",
     "main": "./out/main/index.js",
     "author": "Ezith",
     "description": "FVTT Translator Tool",
@@ -20,6 +20,7 @@
         "@types/three": "^0.160.0",
         "adm-zip": "^0.5.16",
         "canvas-confetti": "^1.9.4",
+        "electron-updater": "^6.7.3",
         "framer-motion": "^12.26.2",
         "lucide-react": "latest",
         "magic-string": "latest",

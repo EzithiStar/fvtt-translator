@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar'
 import { ToolPanel } from './components/ToolPanel'
 import { WorkspaceView } from './components/WorkspaceView'
 import { useI18n } from './lib/i18n'
+import { useFileTabStore } from './lib/fileTabStore'
 import './index.css'
 
 export default function App(): JSX.Element {
@@ -17,7 +18,27 @@ export default function App(): JSX.Element {
     const [projectFiles, setProjectFiles] = useState<string[]>([])
     const [activeTool, setActiveTool] = useState<'glossary' | 'export' | null>(null)
     const [toolDock, setToolDock] = useState<'right' | 'bottom'>('right')
+    // loading state managed by child components or specific actions
     const [loading, setLoading] = useState(false)
+
+    // File Tabs Integration
+    const { activeFile, openFile } = useFileTabStore()
+
+    // Sync view with active file tab
+    useEffect(() => {
+        if (activeFile) {
+            setCurrentFile(activeFile)
+            if (view !== 'settings' && view !== 'workspace') {
+                setView('editor')
+            }
+        } else {
+            // Only switch back to home if we were in editor mode and closed all files
+            if (view === 'editor') {
+                setCurrentFile(null)
+                setView('home')
+            }
+        }
+    }, [activeFile])
 
     // 切换到工作区时记住当前视图
     const goToWorkspace = () => {
@@ -28,7 +49,7 @@ export default function App(): JSX.Element {
     // 从工作区返回时恢复之前的视图
     const goBackFromWorkspace = () => {
         // 如果之前在编辑器且有文件，返回编辑器；否则返回主页
-        if (previousView === 'editor' && currentFile) {
+        if (previousView === 'editor' && activeFile) {
             setView('editor')
         } else {
             setView('home')
@@ -66,9 +87,8 @@ export default function App(): JSX.Element {
             // 单文件模式：projectPath 为 null，files 直接包含该文件
             setProjectPath(null)
             setProjectFiles([file])
-            // Auto open the file
-            setCurrentFile(file)
-            setView('editor')
+            // Auto open the file via store
+            openFile(file)
         }
     }
 
@@ -85,8 +105,7 @@ export default function App(): JSX.Element {
     }
 
     const handleOpenFile = (file: string) => {
-        setCurrentFile(file)
-        setView('editor')
+        openFile(file)
     }
 
     const toggleTool = (tool: 'glossary' | 'export') => {

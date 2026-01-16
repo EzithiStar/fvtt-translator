@@ -2,6 +2,7 @@
 const electron = require("electron");
 const path$1 = require("path");
 const utils$1 = require("@electron-toolkit/utils");
+const electronUpdater = require("electron-updater");
 const fs = require("fs/promises");
 const AdmZip = require("adm-zip");
 const require$$5 = require("@babel/parser");
@@ -10,6 +11,7 @@ const require$$1$1 = require("util");
 const require$$0 = require("os");
 const MagicString = require("magic-string");
 const fs$1 = require("fs");
+const crypto = require("crypto");
 function _interopNamespaceDefault(e) {
   const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
   if (e) {
@@ -15777,7 +15779,7 @@ function requireCache() {
   Object.defineProperty(cache, "__esModule", {
     value: true
   });
-  cache.clear = clear;
+  cache.clear = clear2;
   cache.clearPath = clearPath;
   cache.clearScope = clearScope;
   cache.getCachedPaths = getCachedPaths;
@@ -15785,7 +15787,7 @@ function requireCache() {
   cache.scope = cache.path = void 0;
   let pathsCache = cache.path = /* @__PURE__ */ new WeakMap();
   cache.scope = /* @__PURE__ */ new WeakMap();
-  function clear() {
+  function clear2() {
     clearPath();
     clearScope();
   }
@@ -19302,7 +19304,7 @@ function requireNode() {
   };
   function expandAliases(obj) {
     const map = /* @__PURE__ */ new Map();
-    function add(type, func) {
+    function add2(type, func) {
       const fn = map.get(type);
       map.set(type, fn ? function(node2, parent, stack, getRawIdentifier) {
         var _fn;
@@ -19313,10 +19315,10 @@ function requireNode() {
       const aliases = FLIPPED_ALIAS_KEYS[type];
       if (aliases) {
         for (const alias of aliases) {
-          add(alias, obj[type]);
+          add2(alias, obj[type]);
         }
       } else {
-        add(type, obj[type]);
+        add2(type, obj[type]);
       }
     }
     return map;
@@ -29836,6 +29838,151 @@ class BlacklistManager {
   }
 }
 const blacklistManager = new BlacklistManager();
+const TM_FILE = "translationMemory.json";
+function getTMPath() {
+  const userDataPath = electron.app.getPath("userData");
+  return path$1.join(userDataPath, TM_FILE);
+}
+function hashText(text) {
+  return crypto.createHash("md5").update(text.trim().toLowerCase()).digest("hex");
+}
+function loadTM() {
+  const tmPath = getTMPath();
+  try {
+    if (fs$1.existsSync(tmPath)) {
+      const content = fs$1.readFileSync(tmPath, "utf-8");
+      return JSON.parse(content);
+    }
+  } catch (error) {
+    console.error("Failed to load TM:", error);
+  }
+  return {
+    entries: {},
+    stats: { totalEntries: 0, hitCount: 0, missCount: 0 }
+  };
+}
+function saveTM(data) {
+  const tmPath = getTMPath();
+  try {
+    data.stats.totalEntries = Object.keys(data.entries).length;
+    fs$1.writeFileSync(tmPath, JSON.stringify(data, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Failed to save TM:", error);
+  }
+}
+function lookup(original) {
+  if (!original || original.trim().length === 0) return null;
+  const tm = loadTM();
+  const hash = hashText(original);
+  const entry = tm.entries[hash];
+  if (entry) {
+    entry.usageCount++;
+    tm.stats.hitCount++;
+    saveTM(tm);
+    return entry;
+  }
+  tm.stats.missCount++;
+  saveTM(tm);
+  return null;
+}
+function add(original, translation, source = "Manual") {
+  if (!original || !translation || original.trim().length === 0) return false;
+  const tm = loadTM();
+  const hash = hashText(original);
+  if (!tm.entries[hash] || tm.entries[hash].translation !== translation) {
+    tm.entries[hash] = {
+      original: original.trim(),
+      translation: translation.trim(),
+      source,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      usageCount: 0
+    };
+    saveTM(tm);
+    return true;
+  }
+  return false;
+}
+function batchAdd(items) {
+  const tm = loadTM();
+  let addedCount = 0;
+  for (const item of items) {
+    if (!item.original || !item.translation) continue;
+    const hash = hashText(item.original);
+    if (!tm.entries[hash] || tm.entries[hash].translation !== item.translation) {
+      tm.entries[hash] = {
+        original: item.original.trim(),
+        translation: item.translation.trim(),
+        source: item.source || "Manual",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        usageCount: 0
+      };
+      addedCount++;
+    }
+  }
+  if (addedCount > 0) {
+    saveTM(tm);
+  }
+  return addedCount;
+}
+function getStats() {
+  const tm = loadTM();
+  const total = tm.stats.hitCount + tm.stats.missCount;
+  const hitRate = total > 0 ? (tm.stats.hitCount / total * 100).toFixed(1) + "%" : "0%";
+  return {
+    ...tm.stats,
+    hitRate
+  };
+}
+function clear() {
+  try {
+    saveTM({
+      entries: {},
+      stats: { totalEntries: 0, hitCount: 0, missCount: 0 }
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function getRecentEntries(limit = 50) {
+  const tm = loadTM();
+  return Object.values(tm.entries).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, limit);
+}
+function setupAutoUpdater(win) {
+  electronUpdater.autoUpdater.autoDownload = false;
+  electronUpdater.autoUpdater.autoInstallOnAppQuit = true;
+  electronUpdater.autoUpdater.logger = console;
+  electronUpdater.autoUpdater.on("checking-for-update", () => {
+    if (!win.isDestroyed()) win.webContents.send("updater:status", "checking");
+  });
+  electronUpdater.autoUpdater.on("update-available", (info) => {
+    if (!win.isDestroyed()) win.webContents.send("updater:status", "available", info);
+  });
+  electronUpdater.autoUpdater.on("update-not-available", (info) => {
+    if (!win.isDestroyed()) win.webContents.send("updater:status", "not-available", info);
+  });
+  electronUpdater.autoUpdater.on("error", (err) => {
+    if (!win.isDestroyed()) win.webContents.send("updater:status", "error", err.message);
+  });
+  electronUpdater.autoUpdater.on("download-progress", (progressObj) => {
+    if (!win.isDestroyed()) win.webContents.send("updater:progress", progressObj);
+  });
+  electronUpdater.autoUpdater.on("update-downloaded", (info) => {
+    if (!win.isDestroyed()) win.webContents.send("updater:status", "downloaded", info);
+  });
+  electron.ipcMain.handle("updater:check", async () => {
+    if (utils$1.is.dev) {
+      if (!win.isDestroyed()) {
+        await new Promise((r) => setTimeout(r, 1e3));
+        win.webContents.send("updater:status", "error", "Auto-update not available in Dev mode");
+      }
+      return null;
+    }
+    return electronUpdater.autoUpdater.checkForUpdates();
+  });
+  electron.ipcMain.handle("updater:download", () => electronUpdater.autoUpdater.downloadUpdate());
+  electron.ipcMain.handle("updater:quitAndInstall", () => electronUpdater.autoUpdater.quitAndInstall());
+}
 function createWindow() {
   const mainWindow = new electron.BrowserWindow({
     width: 1280,
@@ -29852,6 +29999,7 @@ function createWindow() {
       // Important for direct file access if needed, though contextBridge is safer
     }
   });
+  setupAutoUpdater(mainWindow);
   mainWindow.on("ready-to-show", () => {
     mainWindow.show();
   });
@@ -29910,6 +30058,13 @@ electron.app.whenReady().then(() => {
     "export:generateBilingual",
     (_, translatedData, originalData, threshold) => moduleExporter.generateBilingual(translatedData, originalData, threshold)
   );
+  electron.ipcMain.handle("tm:lookup", (_, original) => lookup(original));
+  electron.ipcMain.handle("tm:add", (_, original, translation, source) => add(original, translation, source));
+  electron.ipcMain.handle("tm:batchAdd", (_, items) => batchAdd(items));
+  electron.ipcMain.handle("tm:getStats", () => getStats());
+  electron.ipcMain.handle("tm:clear", () => clear());
+  electron.ipcMain.handle("tm:getRecent", (_, limit) => getRecentEntries(limit));
+  electron.ipcMain.handle("shell:openExternal", (_, url) => electron.shell.openExternal(url));
   createWindow();
   electron.app.on("activate", function() {
     if (electron.BrowserWindow.getAllWindows().length === 0) createWindow();

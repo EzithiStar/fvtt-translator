@@ -355,26 +355,41 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
                 {/* Header Controls */}
                 <div className="p-3 space-y-3 bg-white/30 backdrop-blur-sm border-b border-white/20">
                     <div className="flex items-center gap-2">
-                        <select
-                            value={selectedGlossary || ''}
-                            onChange={(e) => {
-                                const val = e.target.value
-                                if (val === '__NEW__') {
-                                    handleCreateGlossary()
-                                } else {
-                                    setSelectedGlossary(val)
-                                    loadGlossary(val)
-                                }
-                            }}
-                            className="flex-1 input-field py-1.5 text-sm"
-                        >
-                            {glossaries.length === 0 && <option value="" disabled>{t.noTermsYet || 'No glossaries'}</option>}
-                            {glossaries.map(g => (
-                                <option key={g.name} value={g.name}>{g.name} ({g.entryCount})</option>
-                            ))}
-                            <option value="__NEW__">+ {t.newGlossary}</option>
-                        </select>
-                        <button onClick={handleSave} disabled={loading || !selectedGlossary} className="p-2 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white rounded-lg shadow-sm disabled:opacity-50 disabled:shadow-none transition-all">
+                        <div className="flex-1 flex items-center gap-2 bg-white/60 rounded-lg border border-white/40 px-2 py-0.5 shadow-sm">
+                            {/* Active Toggle for Current Glossary */}
+                            {selectedGlossary && (
+                                <input
+                                    type="checkbox"
+                                    checked={glossaries.find(g => g.name === selectedGlossary)?.enabled || false}
+                                    onChange={(e) => handleToggleEnabled(selectedGlossary, e.target.checked)}
+                                    className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                    title={t.enableGlossary || "Enable glossary for translation"}
+                                />
+                            )}
+                            <select
+                                value={selectedGlossary || ''}
+                                onChange={(e) => {
+                                    const val = e.target.value
+                                    if (val === '__NEW__') {
+                                        handleCreateGlossary()
+                                    } else {
+                                        setSelectedGlossary(val)
+                                        loadGlossary(val)
+                                    }
+                                }}
+                                className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-slate-700 font-medium py-1.5"
+                            >
+                                {glossaries.length === 0 && <option value="" disabled>{t.noTermsYet || 'No glossaries'}</option>}
+                                {glossaries.map(g => (
+                                    <option key={g.name} value={g.name}>
+                                        {g.enabled ? '✓ ' : ''}{g.name} ({g.entryCount})
+                                    </option>
+                                ))}
+                                <option value="__NEW__" className="text-purple-600 font-bold border-t">+ {t.newGlossary}</option>
+                            </select>
+                        </div>
+
+                        <button onClick={handleSave} disabled={loading || !selectedGlossary} className="p-2 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white rounded-lg shadow-sm disabled:opacity-50 disabled:shadow-none transition-all" title={t.save}>
                             <Save size={16} />
                         </button>
                     </div>
@@ -387,7 +402,7 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="flex-1 input-field py-1.5 text-sm"
                         />
-                        <button onClick={addEntry} disabled={!selectedGlossary} className="p-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white rounded-lg shadow-sm disabled:opacity-50 disabled:shadow-none transition-all">
+                        <button onClick={addEntry} disabled={!selectedGlossary} className="p-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white rounded-lg shadow-sm disabled:opacity-50 disabled:shadow-none transition-all" title={t.addTerm}>
                             <Plus size={16} />
                         </button>
                     </div>

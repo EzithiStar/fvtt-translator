@@ -4,6 +4,7 @@ import { useI18n } from '../lib/i18n'
 import { useModuleBuilder } from '../lib/moduleBuilderStore'
 import { useTranslationStore, TranslationItem } from '../lib/translationStore'
 import { PromptModal } from './PromptModal'
+import { HighlightedText } from './HighlightedText'
 
 // TranslationItem is now imported from translationStore
 
@@ -25,10 +26,17 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
         shouldReload
     } = useTranslationStore()
 
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(() => shouldReload(file))
     const [error, setError] = useState<string | null>(null)
+    const [glossaryTerms, setGlossaryTerms] = useState<Array<{ term: string; definition: string; context?: string }>>([])
+
+    // Pagination / Virtualization
+    const [visibleCount, setVisibleCount] = useState(50)
 
     useEffect(() => {
+        // Reset visible count when file changes
+        setVisibleCount(50)
+
         // 只在文件变化时重新加载
         if (shouldReload(file)) {
             setCurrentFile(file)
@@ -37,6 +45,31 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
             setLoading(false)
         }
     }, [file])
+
+    // Load active glossary terms for highlighting
+    useEffect(() => {
+        const loadGlossaryTerms = async () => {
+            try {
+                const activeNames = await (window as any).api.getActiveGlossaries()
+                if (!activeNames || activeNames.length === 0) {
+                    setGlossaryTerms([])
+                    return
+                }
+
+                const allTerms: Array<{ term: string; definition: string; context?: string }> = []
+                for (const name of activeNames) {
+                    const entries = await (window as any).api.loadGlossary(name)
+                    if (entries && Array.isArray(entries)) {
+                        allTerms.push(...entries)
+                    }
+                }
+                setGlossaryTerms(allTerms)
+            } catch (error) {
+                console.error('Failed to load glossary terms:', error)
+            }
+        }
+        loadGlossaryTerms()
+    }, [])
 
     const loadContent = async () => {
         setLoading(true)
@@ -256,11 +289,26 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
                 // Mark as processed immediately so we don't pick them up again if they fail silently
                 batch.forEach(i => processedIds.add(i.id))
 
-                // Process batch in parallel
+                // Process batch in parallel with TM integration
                 const results = await Promise.all(batch.map(async (item) => {
                     try {
+                        // First, check Translation Memory for existing translation
+                        const tmResult = await (window as any).api.tmLookup(item.original)
+                        if (tmResult && tmResult.translation) {
+                            // TM Hit! Use cached translation
+                            console.log(`[TM Hit] ${item.original} -> ${tmResult.translation}`)
+                            return { id: item.id, translation: tmResult.translation, original: item.original, source: 'TM' }
+                        }
+
+                        // TM Miss - Call AI
                         const translation = await (window as any).api.translate(item.original, config, projectPath)
-                        return { id: item.id, translation, original: item.original }
+
+                        // Save to Translation Memory for future use
+                        if (translation && translation !== item.original) {
+                            await (window as any).api.tmAdd(item.original, translation, 'AI')
+                        }
+
+                        return { id: item.id, translation, original: item.original, source: 'AI' }
                     } catch (e) {
                         console.error(`Error translating ${item.id}:`, e)
                         return null
@@ -350,6 +398,9 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
         setPromptConfig({ title, defaultValue, onConfirm })
         setPromptOpen(true)
     }
+
+    const filteredItems = items.filter(i => i.id !== 'system.description.value')
+    const visibleItems = filteredItems.slice(0, visibleCount)
 
     return (
         <div className="flex flex-col h-full bg-[#FAFAF7] text-slate-700 relative">
@@ -535,7 +586,7 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
                         </div>
 
                         <div className="space-y-3 pb-8">
-                            {items.filter(i => i.id !== 'system.description.value').map(item => (
+                            {visibleItems.map(item => (
                                 <div
                                     key={item.id}
                                     className={`clay-card grid grid-cols-[1fr_1fr_40px_40px_40px] gap-6 items-start p-4 transition-all duration-300 ${item.isIgnored
@@ -544,7 +595,21 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
                                         }`}
                                 >
                                     <div className={`font-mono text-sm break-words select-text pt-2 leading-relaxed ${item.isIgnored ? 'text-slate-400 line-through' : 'text-slate-600'}`}>
-                                        {item.original}
+                                        <HighlightedText
+                                            text={item.original}
+                                            glossaryTerms={glossaryTerms}
+                                            onInsertTranslation={(translation) => {
+                                                // Insert translation by appending or replacing
+                                                const currentTranslation = item.translation
+                                                const newTranslation = currentTranslation === item.original
+                                                    ? translation
+                                                    : currentTranslation + translation
+                                                const newItems = items.map(i =>
+                                                    i.original === item.original ? { ...i, translation: newTranslation } : i
+                                                )
+                                                setItems(newItems)
+                                            }}
+                                        />
                                     </div>
                                     <textarea
                                         className={`input-field w-full min-h-[42px] leading-relaxed resize-y ${item.isIgnored ? 'text-slate-400 bg-slate-50 shadow-none border-transparent' : ''}`}
@@ -603,10 +668,22 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
                                     </div>
                                 </div>
                             ))}
+
+                            {/* Load More Sentinel */}
+                            {visibleCount < filteredItems.length && (
+                                <div className="py-8 text-center">
+                                    <button
+                                        onClick={() => setVisibleCount(c => c + 50)}
+                                        className="px-6 py-2 bg-white border border-slate-200 text-slate-500 rounded-full hover:bg-slate-50 shadow-sm text-sm font-medium transition-all hover:scale-105 active:scale-95"
+                                    >
+                                        Load More ({filteredItems.length - visibleCount} remaining)
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </>
                 )}
             </div>
-        </div>
+        </div >
     )
 }

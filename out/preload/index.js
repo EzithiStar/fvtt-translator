@@ -37,7 +37,30 @@ const api = {
   generateBilingual: (translatedData, originalData, threshold) => electron.ipcRenderer.invoke("export:generateBilingual", translatedData, originalData, threshold),
   // File operations for backup management
   deleteFile: (path) => electron.ipcRenderer.invoke("fs:deleteFile", path),
-  fileExists: (path) => electron.ipcRenderer.invoke("fs:fileExists", path)
+  fileExists: (path) => electron.ipcRenderer.invoke("fs:fileExists", path),
+  // Translation Memory
+  tmLookup: (original) => electron.ipcRenderer.invoke("tm:lookup", original),
+  tmAdd: (original, translation, source) => electron.ipcRenderer.invoke("tm:add", original, translation, source),
+  tmBatchAdd: (items) => electron.ipcRenderer.invoke("tm:batchAdd", items),
+  tmGetStats: () => electron.ipcRenderer.invoke("tm:getStats"),
+  tmClear: () => electron.ipcRenderer.invoke("tm:clear"),
+  tmGetRecent: (limit) => electron.ipcRenderer.invoke("tm:getRecent", limit),
+  // Auto Updater
+  checkForUpdates: () => electron.ipcRenderer.invoke("updater:check"),
+  downloadUpdate: () => electron.ipcRenderer.invoke("updater:download"),
+  quitAndInstall: () => electron.ipcRenderer.invoke("updater:quitAndInstall"),
+  onUpdaterStatus: (callback) => {
+    const subscription = (_, status, info) => callback(status, info);
+    electron.ipcRenderer.on("updater:status", subscription);
+    return () => electron.ipcRenderer.removeListener("updater:status", subscription);
+  },
+  onUpdaterProgress: (callback) => {
+    const subscription = (_, progress) => callback(progress);
+    electron.ipcRenderer.on("updater:progress", subscription);
+    return () => electron.ipcRenderer.removeListener("updater:progress", subscription);
+  },
+  // Shell
+  openExternal: (url) => electron.ipcRenderer.invoke("shell:openExternal", url)
 };
 if (process.contextIsolated) {
   try {

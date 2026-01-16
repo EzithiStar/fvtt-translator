@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { autoUpdater } from 'electron-updater'
 import { fileSystem } from './lib/fileSystem'
 import { codeParser } from './lib/parsers'
 import { aiService } from './lib/ai'
@@ -8,6 +9,58 @@ import { moduleExporter } from './lib/exporter'
 import { glossaryManager } from './lib/glossary'
 import { glossaryImporter } from './lib/glossaryImporter'
 import { blacklistManager } from './lib/blacklist'
+import * as translationMemory from './lib/translationMemory'
+
+function setupAutoUpdater(win: BrowserWindow) {
+    autoUpdater.autoDownload = false
+    autoUpdater.autoInstallOnAppQuit = true
+
+    // Logging
+    autoUpdater.logger = console
+
+    // Event forwarding
+    autoUpdater.on('checking-for-update', () => {
+        if (!win.isDestroyed()) win.webContents.send('updater:status', 'checking')
+    })
+
+    autoUpdater.on('update-available', (info: any) => {
+        if (!win.isDestroyed()) win.webContents.send('updater:status', 'available', info)
+    })
+
+    autoUpdater.on('update-not-available', (info: any) => {
+        if (!win.isDestroyed()) win.webContents.send('updater:status', 'not-available', info)
+    })
+
+    autoUpdater.on('error', (err: any) => {
+        if (!win.isDestroyed()) win.webContents.send('updater:status', 'error', err.message)
+    })
+
+    autoUpdater.on('download-progress', (progressObj: any) => {
+        if (!win.isDestroyed()) win.webContents.send('updater:progress', progressObj)
+    })
+
+    autoUpdater.on('update-downloaded', (info: any) => {
+        if (!win.isDestroyed()) win.webContents.send('updater:status', 'downloaded', info)
+    })
+
+    // IPC Handlers
+    // IPC Handlers
+    ipcMain.handle('updater:check', async () => {
+        if (is.dev) {
+            // Emulate finding an update or just error out to stop spinning
+            // auto-updater doesn't work well in dev without yml config
+            if (!win.isDestroyed()) {
+                // Simulate processing delay
+                await new Promise(r => setTimeout(r, 1000))
+                win.webContents.send('updater:status', 'error', 'ERR_DEV_MODE')
+            }
+            return null
+        }
+        return autoUpdater.checkForUpdates()
+    })
+    ipcMain.handle('updater:download', () => autoUpdater.downloadUpdate())
+    ipcMain.handle('updater:quitAndInstall', () => autoUpdater.quitAndInstall())
+}
 
 function createWindow(): void {
     // Create the browser window.
@@ -25,6 +78,9 @@ function createWindow(): void {
             nodeIntegration: true // Important for direct file access if needed, though contextBridge is safer
         }
     })
+
+    // Setup Updater
+    setupAutoUpdater(mainWindow)
 
     mainWindow.on('ready-to-show', () => {
         mainWindow.show()
@@ -112,6 +168,17 @@ app.whenReady().then(() => {
         moduleExporter.generateBilingual(translatedData, originalData, threshold)
     )
 
+    // Translation Memory
+    ipcMain.handle('tm:lookup', (_, original) => translationMemory.lookup(original))
+    ipcMain.handle('tm:add', (_, original, translation, source) => translationMemory.add(original, translation, source))
+    ipcMain.handle('tm:batchAdd', (_, items) => translationMemory.batchAdd(items))
+    ipcMain.handle('tm:getStats', () => translationMemory.getStats())
+    ipcMain.handle('tm:clear', () => translationMemory.clear())
+    ipcMain.handle('tm:getRecent', (_, limit) => translationMemory.getRecentEntries(limit))
+
+    // Shell
+    ipcMain.handle('shell:openExternal', (_, url) => shell.openExternal(url))
+
     createWindow()
 
     app.on('activate', function () {
@@ -129,6 +196,3 @@ app.on('window-all-closed', () => {
         app.quit()
     }
 })
-
-// In this file you can include the rest of your app"s specific main process
-// code. You can also put them in separate files and require them here.

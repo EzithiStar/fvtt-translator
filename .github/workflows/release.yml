@@ -36,11 +36,9 @@ jobs:
           # Extract first version section (between first ## and second ##)
           if ($content -match '(?s)## \[.*?\](.*?)(?=## \[|$)') {
             $notes = $Matches[1].Trim()
-            # Escape for GitHub Actions
-            $notes = $notes -replace '%','%25' -replace "`n",'%0A' -replace "`r",'%0D'
-            echo "notes=$notes" >> $env:GITHUB_OUTPUT
+            $notes | Out-File -FilePath release_notes.txt -Encoding utf8
           } else {
-            echo "notes=请查看 CHANGELOG.md 获取更新详情。" >> $env:GITHUB_OUTPUT
+            "请查看 CHANGELOG.md 获取更新详情。" | Out-File -FilePath release_notes.txt -Encoding utf8
           }
         
       - name: Package and Release
@@ -51,15 +49,10 @@ jobs:
       - name: Update Release Notes
         uses: softprops/action-gh-release@v2
         with:
-          body: |
-            ## 更新内容
-
-            ${{ steps.changelog.outputs.notes }}
-
-            ---
-            📥 **下载说明**:
-            - `.zip` - 绿色免安装版，解压即用
-            - `.exe` - Windows 安装程序
-          append_body: false
+          body_path: release_notes.txt
+          append_body: true
+          files: |
+            dist/*.exe
+            dist/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

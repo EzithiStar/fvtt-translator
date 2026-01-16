@@ -9,6 +9,59 @@
 
 ---
 
+## [1.2.1] - 2026-01-16
+
+### Fixed
+- **Auto Update**:
+  - **Manual Download**: Fixed clicking "Manual Download" not opening the browser.
+    - **手动下载**: 修复了点击手动下载按钮无反应的问题。
+  - **Dev Mode**: Prevent infinite "Checking..." spinner in development mode by showing a clear error message.
+    - **开发模式**: 防止在开发环境下无限检查更新，现在会显示明确的不可用提示。
+  - **CSP Error**: Fixed `Content-Security-Policy` issue blocking Web Workers (e.g. for 3D dice).
+    - **CSP 错误**: 修复了阻止 Web Worker 运行的 CSP 策略，解决了控制台安全警告。
+- **Release Notes**: Fixed garbled characters (`%0D%0A`) in GitHub Release body.
+  - **发布说明**: 修复了 GitHub Release 页面更新说明显示乱码的问题。
+
+### Changed
+- **Auto Update UX**:
+  - Added "Enable Auto Update" toggle switch in Settings (user preference).
+    - **自动更新开关**: 在设置中新增了启用/禁用自动更新的开关。
+  - Translated experimental feature warning and error messages.
+    - **本地化**: 翻译了自动更新相关的警告和错误提示。
+- **Performance**:
+  - **Translation Editor**: Implemented Lazy Loading (pagination) to fix lag when opening large files.
+    - **编辑器性能**: 实现了懒加载（分页渲染），极大优化了打开大文件时的流畅度。
+
+## [1.2.0] - 2026-01-16
+
+### Added
+- **File Tabs**: Support opening multiple files simultaneously in sidebar tabs.
+  - **文件标签页**: 支持在侧边栏同时打开多个文件标签页。
+- **Auto Update**: Built-in auto-update mechanism using GitHub Releases.
+  - **自动更新**: 内置自动更新机制，支持检查更新、下载进度条及重启安装。
+- **Glossary Selector**: Quickly toggle active glossaries from the sidebar panel.
+  - **术语表选择**: 在侧栏面板中快速切换启用的术语表。
+- **Performance**: Optimized editor loading state to prevent flickering.
+  - **性能优化**: 优化编辑器加载状态，防止切换文件时闪烁。
+
+### Fixed
+- **State Persistence**: Active file and opened tabs are restored after restart.
+  - **状态持久化**: 重启后自动恢复打开的文件和标签页。
+
+## [1.1.9] - 2026-01-16
+
+### ✨ 新功能
+- **翻译记忆库 (Translation Memory)**: 自动复用已翻译内容，减少 AI 调用。
+  - 翻译前自动查询记忆库，100% 匹配直接使用
+  - AI 翻译结果自动保存到记忆库
+  - 新增设置标签页：查看统计 (命中率)、清空记忆库
+- **术语表智能匹配**: 翻译编辑器中自动高亮术语表中的词汇。
+  - 黄色背景高亮显示匹配的术语
+  - 悬停显示术语译文 Tooltip
+  - 点击高亮术语一键插入译文
+
+---
+
 ## [1.1.8] - 2026-01-16
 
 ### ✨ 新功能

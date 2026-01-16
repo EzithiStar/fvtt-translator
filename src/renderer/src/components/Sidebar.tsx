@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Home, Settings, FileText, FolderOpen, Box, ChevronLeft, ChevronRight, ChevronDown, Folder } from 'lucide-react'
+import { Home, Settings, FileText, FolderOpen, Box, ChevronLeft, ChevronRight, ChevronDown, Folder, X as CloseIcon } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
+import { useFileTabStore } from '../lib/fileTabStore'
 
 // 树节点接口
 interface TreeNode {
@@ -201,6 +202,9 @@ export function Sidebar({
     const [collapsed, setCollapsed] = useState(false)
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
 
+    // File Tab Store
+    const { openedFiles, activeFile, closeFile, openFile } = useFileTabStore()
+
     // 构建树结构
     const fileTree = useMemo(() => buildTree(files, projectPath), [files, projectPath])
 
@@ -215,6 +219,12 @@ export function Sidebar({
             }
             return next
         })
+    }
+
+    // 处理文件点击
+    const handleFileClick = (path: string) => {
+        openFile(path)
+        onOpenFile(path)
     }
 
     useEffect(() => {
@@ -255,6 +265,67 @@ export function Sidebar({
                     {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                 </button>
             </div>
+
+            {/* Opened Files Section */}
+            {!collapsed && openedFiles.length > 0 && (
+                <div className="flex-none p-3 border-b border-white/40 bg-white/20">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 flex items-center justify-between">
+                        <span>{t.openedFiles || 'Opened Files'} ({openedFiles.length})</span>
+                        {openedFiles.length > 1 && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    // Close all via store
+                                    useFileTabStore.getState().closeAllFiles()
+                                    onGoHome()
+                                }}
+                                className="p-1 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-500 transition-colors"
+                                title={t.closeAll || "Close All"}
+                            >
+                                <CloseIcon size={12} />
+                            </button>
+                        )}
+                    </div>
+                    <div className="space-y-0.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                        {openedFiles.map(file => {
+                            const fileName = file.split(/[/\\]/).pop()
+                            const isActive = currentFile === file
+                            return (
+                                <div
+                                    key={file}
+                                    className={`group flex items-center justify-between px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-all ${isActive
+                                        ? 'bg-white border border-blue-200 shadow-sm text-blue-600 font-medium'
+                                        : 'hover:bg-white/60 text-slate-600 border border-transparent'
+                                        }`}
+                                    onClick={() => handleFileClick(file)}
+                                    title={file}
+                                >
+                                    <div className="flex items-center gap-2 truncate flex-1">
+                                        <FileText size={12} className={isActive ? 'text-blue-500' : 'text-slate-400'} />
+                                        <span className="truncate">{fileName}</span>
+                                    </div>
+                                    <div
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            closeFile(file)
+                                            if (file === currentFile) {
+                                                // Handle close logic if current file
+                                                if (openedFiles.length <= 1) {
+                                                    onGoHome()
+                                                }
+                                            }
+                                        }}
+                                        className={`p-1 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all ${isActive ? 'opacity-100' : ''
+                                            }`}
+                                    >
+                                        <CloseIcon size={12} />
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Section: Project */}
             <div className="p-3 border-b border-white/40 shrink-0">
@@ -312,7 +383,7 @@ export function Sidebar({
                                 progressMap={progressMap}
                                 expandedFolders={expandedFolders}
                                 toggleFolder={toggleFolder}
-                                onOpenFile={onOpenFile}
+                                onOpenFile={handleFileClick}
                             />
                         ))
                     ) : (

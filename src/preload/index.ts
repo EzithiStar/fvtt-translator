@@ -44,7 +44,33 @@ const api = {
 
     // File operations for backup management
     deleteFile: (path: string): Promise<void> => ipcRenderer.invoke('fs:deleteFile', path),
-    fileExists: (path: string): Promise<boolean> => ipcRenderer.invoke('fs:fileExists', path)
+    fileExists: (path: string): Promise<boolean> => ipcRenderer.invoke('fs:fileExists', path),
+
+    // Translation Memory
+    tmLookup: (original: string): Promise<any> => ipcRenderer.invoke('tm:lookup', original),
+    tmAdd: (original: string, translation: string, source?: string): Promise<boolean> => ipcRenderer.invoke('tm:add', original, translation, source),
+    tmBatchAdd: (items: Array<{ original: string; translation: string; source?: string }>): Promise<number> => ipcRenderer.invoke('tm:batchAdd', items),
+    tmGetStats: (): Promise<{ totalEntries: number; hitCount: number; missCount: number; hitRate: string }> => ipcRenderer.invoke('tm:getStats'),
+    tmClear: (): Promise<boolean> => ipcRenderer.invoke('tm:clear'),
+    tmGetRecent: (limit?: number): Promise<any[]> => ipcRenderer.invoke('tm:getRecent', limit),
+
+    // Auto Updater
+    checkForUpdates: (): Promise<any> => ipcRenderer.invoke('updater:check'),
+    downloadUpdate: (): Promise<any> => ipcRenderer.invoke('updater:download'),
+    quitAndInstall: (): Promise<void> => ipcRenderer.invoke('updater:quitAndInstall'),
+    onUpdaterStatus: (callback: (status: string, info?: any) => void) => {
+        const subscription = (_: any, status: string, info: any) => callback(status, info)
+        ipcRenderer.on('updater:status', subscription)
+        return () => ipcRenderer.removeListener('updater:status', subscription)
+    },
+    onUpdaterProgress: (callback: (progress: any) => void) => {
+        const subscription = (_: any, progress: any) => callback(progress)
+        ipcRenderer.on('updater:progress', subscription)
+        return () => ipcRenderer.removeListener('updater:progress', subscription)
+    },
+
+    // Shell
+    openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

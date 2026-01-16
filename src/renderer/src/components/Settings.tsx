@@ -5,10 +5,11 @@ import { SettingsGeneral } from './settings/SettingsGeneral'
 import { SettingsAI } from './settings/SettingsAI'
 import { SettingsModule } from './settings/SettingsModule'
 import { SettingsAbout } from './settings/SettingsAbout'
-import { Settings as SettingsIcon, Cpu, Package, Info, ArrowLeft, Save, RotateCcw } from 'lucide-react'
+import { SettingsTM } from './settings/SettingsTM'
+import { Settings as SettingsIcon, Cpu, Package, Info, ArrowLeft, Save, RotateCcw, Database } from 'lucide-react'
 
 // Tabs definition
-type SettingsTab = 'general' | 'ai' | 'module' | 'about'
+type SettingsTab = 'general' | 'ai' | 'tm' | 'module' | 'about'
 
 export function Settings({ onBack }: { onBack: () => void }): JSX.Element {
     const { t } = useI18n()
@@ -54,6 +55,7 @@ export function Settings({ onBack }: { onBack: () => void }): JSX.Element {
     const tabs: { id: SettingsTab; label: string; icon: React.FC<any> }[] = [
         { id: 'general', label: t.settingTabs?.general || 'General', icon: SettingsIcon },
         { id: 'ai', label: t.settingTabs?.ai || 'AI Translation', icon: Cpu },
+        { id: 'tm', label: t.settingTabs?.tm || 'Translation Memory', icon: Database },
         { id: 'module', label: t.settingTabs?.module || 'Module', icon: Package },
         { id: 'about', label: t.settingTabs?.about || 'About', icon: Info },
     ]
@@ -114,6 +116,7 @@ export function Settings({ onBack }: { onBack: () => void }): JSX.Element {
                             <p className="text-slate-500 font-medium text-sm">
                                 {activeTab === 'general' && (t.generalSettings || 'Configure interface preferences')}
                                 {activeTab === 'ai' && (t.aiSettings || 'Manage AI models and API keys')}
+                                {activeTab === 'tm' && (t.tmSettings || 'Manage translation cache and memory')}
                                 {activeTab === 'module' && (t.moduleSettings || 'Default paths and build options')}
                                 {activeTab === 'about' && (t.aboutSettings || 'Version and developer info')}
                             </p>
@@ -122,6 +125,7 @@ export function Settings({ onBack }: { onBack: () => void }): JSX.Element {
                         <div className="clay-panel p-6 bg-white/60 backdrop-blur-xl border border-white/60 shadow-xl shadow-slate-200/50 rounded-2xl">
                             {activeTab === 'general' && <SettingsGeneral settings={settings} updateSettings={updateSettings} />}
                             {activeTab === 'ai' && <SettingsAI settings={settings} updateSettings={updateSettings} />}
+                            {activeTab === 'tm' && <SettingsTM />}
                             {activeTab === 'module' && <SettingsModule settings={settings} updateSettings={updateSettings} />}
                             {activeTab === 'about' && <SettingsAbout />}
                         </div>

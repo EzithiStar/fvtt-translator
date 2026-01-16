@@ -111,19 +111,10 @@ export function D20Icon() {
                 </Canvas>
             </div>
 
-            {/* 提示文本 */}
-            <AnimatePresence>
-                {canRoll && !isRolling && !result && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold bg-slate-800/90 text-white px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap pointer-events-none backdrop-blur-sm"
-                    >
-                        点击掷骰 / Click to Roll
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* 提示文本 - 仅在悬停时显示 */}
+            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold bg-slate-800/90 text-white px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap pointer-events-none backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                点击掷骰 / Click to Roll
+            </div>
 
             {/* 结果展示 - 覆盖在最上层 */}
             <AnimatePresence>

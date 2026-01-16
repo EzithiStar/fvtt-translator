@@ -11,6 +11,13 @@ const translations = {
         developer: 'Developer: EzithStar',
         toolName: 'Tool: Antigravity',
         github: 'GitHub Repository',
+        checking: 'Checking...',
+        checkUpdate: 'Check for Updates',
+        manualDownload: 'Manual Download',
+        autoUpdateExperimental: 'Auto-update is currently experimental. If it hangs, please use manual download.',
+        errorDevMode: 'Auto-update is not available in Development mode.',
+        enableAutoUpdate: 'Enable Auto Update',
+        autoUpdateDesc: 'Automatically check for updates on startup.',
         openProject: 'Open Module / Data Folder',
         openFile: 'Open File (JSON / ZIP)',
         currentProject: 'Current Project:',
@@ -40,12 +47,7 @@ const translations = {
         configureSettings: 'Please configure AI API Key in Settings first.',
 
         // Settings Overhaul
-        settingTabs: {
-            general: 'General',
-            ai: 'AI Translation',
-            module: 'Module',
-            about: 'About',
-        },
+
         settings: 'Settings',
         generalSettings: 'General Settings',
         aiSettings: 'AI Configuration',
@@ -100,6 +102,7 @@ const translations = {
         noMatches: 'No matches found.',
         noTermsYet: 'No glossary terms yet. Add one to get started.',
         addToGlossary: 'Add to Glossary',
+        enableGlossary: 'Enable glossary for AI translation',
         newGlossary: 'New Glossary',
         glossaryFiles: 'Glossary Files',
         selectOrCreate: 'Select or create a glossary to begin',
@@ -127,8 +130,7 @@ const translations = {
         registerScript: 'Register Script (babele.js)',
         importMetadata: 'Load Info from Module',
         includedFiles: 'Included Files',
-        selectAll: 'Select All',
-        deselectAll: 'Deselect All',
+
         filesSelected: '{count} selected',
         layoutBottom: 'Dock Bottom',
         layoutRight: 'Dock Right',
@@ -143,6 +145,8 @@ const translations = {
         sectionProject: 'Project',
         sectionFiles: 'Files',
         sectionModules: 'Modules',
+        openedFiles: 'Opened Files',
+        closeAll: 'Close All',
         dragDropFiles: 'Drag & Drop Files Here',
         noTermsFoundSidebar: 'No files detected',
 
@@ -247,6 +251,33 @@ const translations = {
         importSelected: 'Import Selected ({count})',
         selectAll: 'Select All',
         deselectAll: 'Deselect All',
+
+        // Translation Memory
+        tmTitle: 'Translation Memory',
+        tmSubtitle: 'Automatically reuse previous translations to reduce AI calls',
+        tmSettings: 'Manage translation cache and memory',
+        tmTotalEntries: 'Total Entries',
+        tmHitRate: 'Hit Rate',
+        tmHitCount: 'Cache Hits',
+        tmMissCount: 'Cache Misses',
+        tmHowItWorks: 'How It Works',
+        tmDesc1: 'Before AI translation, the memory is queried for exact matches',
+        tmDesc2: 'AI translation results are automatically saved to memory',
+        tmDesc3: 'Reduces duplicate AI calls and saves API tokens',
+        tmClear: 'Clear Memory',
+        tmClearConfirm: 'Are you sure you want to clear the Translation Memory? All cached translations will be deleted.',
+        tmCleared: 'Translation Memory cleared',
+        tmClearFailed: 'Failed to clear Translation Memory',
+        refresh: 'Refresh',
+
+        // Setting Tabs
+        settingTabs: {
+            general: 'General',
+            ai: 'AI Translation',
+            tm: 'Translation Memory',
+            module: 'Module',
+            about: 'About'
+        },
     },
     zh: {
         appTitle: 'FVTT 翻译器',
@@ -290,6 +321,7 @@ const translations = {
         noMatches: '未找到匹配项。',
         noTermsYet: '暂无术语。请添加一条以开始。',
         addToGlossary: '添加到术语表',
+        enableGlossary: '启用该术语表用于 AI 翻译',
         newGlossary: '新建术语表',
         glossaryFiles: '术语表文件',
         selectOrCreate: '选择或创建一个术语表',
@@ -307,12 +339,7 @@ const translations = {
         errorBatchNetwork: '网络错误或 API 限制。已停止。',
 
         // Settings Overhaul
-        settingTabs: {
-            general: '常规设置',
-            ai: 'AI 翻译',
-            module: '模组配置',
-            about: '关于',
-        },
+
         settings: '设置',
         generalSettings: '常规设置',
         aiSettings: 'AI 配置',
@@ -358,6 +385,13 @@ const translations = {
         developer: '开发者: EzithStar',
         toolName: '工具: Antigravity',
         github: 'GitHub 仓库',
+        checking: '检查更新中...',
+        checkUpdate: '检查更新',
+        manualDownload: '手动下载',
+        autoUpdateExperimental: '自动更新目前为实验性功能。如果长时间不可用，请使用手动下载。',
+        errorDevMode: '开发模式下自动更新不可用。',
+        enableAutoUpdate: '启用自动更新',
+        autoUpdateDesc: '启动时自动检查更新。',
 
         // New keys & Fixes
         // New keys & Fixes
@@ -372,8 +406,7 @@ const translations = {
         registerScript: '注册脚本 (babele.js)',
         importMetadata: '从模组加载信息',
         includedFiles: '包含的文件 (Files)',
-        selectAll: '全选',
-        deselectAll: '取消全选',
+
         filesSelected: '已选 {count} 个',
         layoutBottom: '停靠底部',
         layoutRight: '停靠右侧',
@@ -425,6 +458,8 @@ const translations = {
         sectionProject: '项目',
         sectionFiles: '文件',
         sectionModules: '模组',
+        openedFiles: '已打开',
+        closeAll: '关闭所有',
         dragDropFiles: '拖拽文件',
         noTermsFoundSidebar: '空',
 
@@ -481,6 +516,33 @@ const translations = {
         importSelected: '导入选中 ({count})',
         selectAll: '全选',
         deselectAll: '取消全选',
+
+        // Translation Memory
+        tmTitle: '翻译记忆库',
+        tmSubtitle: '自动复用已翻译内容，减少 AI 调用',
+        tmSettings: '管理翻译缓存与记忆库',
+        tmTotalEntries: '总条目数',
+        tmHitRate: '命中率',
+        tmHitCount: '命中次数',
+        tmMissCount: '未命中次数',
+        tmHowItWorks: '工作原理',
+        tmDesc1: '翻译前自动查询记忆库，100% 匹配直接使用',
+        tmDesc2: 'AI 翻译结果会自动保存到记忆库',
+        tmDesc3: '减少重复调用 AI，节省 Token 消耗',
+        tmClear: '清空记忆库',
+        tmClearConfirm: '确定要清空翻译记忆库吗？所有缓存的翻译将被删除。',
+        tmCleared: '翻译记忆库已清空',
+        tmClearFailed: '清空失败',
+        refresh: '刷新',
+
+        // Setting Tabs
+        settingTabs: {
+            general: '常规',
+            ai: 'AI 翻译',
+            tm: '翻译记忆库',
+            module: '模组',
+            about: '关于'
+        }
     }
 }
 
