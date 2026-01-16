@@ -86,13 +86,16 @@ export function TranslationEditor({ file, projectPath, onSave, onBack }: { file:
                 const allKeys = Object.keys(flatData)
 
                 const loadedItems = Object.entries(flatData)
-                    .filter(([key]) => {
+                    .filter(([key, value]) => {
+                        // Filter out empty or whitespace-only values
+                        if (!value || value.trim() === '') return false
+
                         // Normalize key: internal flatten uses ':::' but user blacklist uses dots
                         const normalizedKey = key.replace(/:::/g, '.')
                         // Check if any blacklist entry is a suffix of the key (partial match)
                         const isBlocked = blacklistArr.some((pattern: string) => normalizedKey.endsWith(pattern))
                         return !isBlocked
-                    }) // Filter blacklisted keys immediately!
+                    }) // Filter blacklisted keys and empty values
                     .map(([key, value]) => ({
                         id: key,
                         // Key is ID. Original text is the VALUE.

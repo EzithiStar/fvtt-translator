@@ -63,8 +63,9 @@ export default function App(): JSX.Element {
                 setLoading(false)
             }
         } else {
-            setProjectPath(file)
-            await loadFiles(file)
+            // 单文件模式：projectPath 为 null，files 直接包含该文件
+            setProjectPath(null)
+            setProjectFiles([file])
             // Auto open the file
             setCurrentFile(file)
             setView('editor')

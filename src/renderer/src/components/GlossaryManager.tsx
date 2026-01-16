@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Save, Book, X, FolderPlus, Upload } from 'lucide-react'
+import { Plus, Trash2, Save, Book, X, FolderPlus, Upload, FileSearch, CheckSquare, Square } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
 import { GlossaryEntry } from '../../../shared/types'
+
+// Extracted term for preview
+interface ExtractedTerm {
+    key: string
+    value: string
+    selected: boolean
+}
 
 interface GlossaryFile {
     name: string
@@ -24,12 +31,22 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
     const [searchTerm, setSearchTerm] = useState('')
     const [showNameInput, setShowNameInput] = useState(false)
     const [newGlossaryName, setNewGlossaryName] = useState('')
+    const [currentPage, setCurrentPage] = useState(1)
+    // Extraction feature states
+    const [showExtractModal, setShowExtractModal] = useState(false)
+    const [extractedTerms, setExtractedTerms] = useState<ExtractedTerm[]>([])
+    const [extractFileName, setExtractFileName] = useState('')
 
     useEffect(() => {
         if (isOpen) {
             loadGlossaries()
         }
     }, [isOpen])
+
+    // Reset to page 1 when search term changes
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchTerm])
 
     const loadGlossaries = async () => {
         setLoading(true)
@@ -148,6 +165,137 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
         }
     }
 
+    const handleLoadPreset = async () => {
+        if (!selectedGlossary) {
+            alert(t.selectGlossaryFirst || 'Please select a glossary first')
+            return
+        }
+        if (!confirm(t.pf1ePresetConfirm || "Load Pathfinder 1e Core Glossary? This will be merged into the current glossary.")) return;
+
+        setLoading(true);
+        try {
+            const presetModule = await import('../data/glossaries/pathfinder1e.json');
+            const presetTerms = presetModule.default || presetModule;
+
+            const newEntries = Object.entries(presetTerms).map(([term, definition]) => ({
+                term,
+                definition: definition as string,
+                context: 'PF1e Core'
+            }));
+
+            setEntries(prev => [...prev, ...newEntries]);
+            const message = (t.pf1eLoadedTerms || 'Loaded {count} terms.').replace('{count}', newEntries.length.toString());
+            alert(message);
+        } catch (error) {
+            console.error(error);
+            alert(`${t.pf1eLoadFailed || 'Failed to load preset'}: ${error}`);
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // ===== EXTRACTION FROM TRANSLATED FILE =====
+    const handleExtractFromFile = async () => {
+        if (!selectedGlossary) {
+            alert(t.selectGlossaryFirst || 'Please select a glossary first')
+            return
+        }
+        try {
+            const filePath = await (window as any).api.selectFile(['.json'])
+            if (!filePath) return
+
+            const content = await (window as any).api.readFile(filePath)
+            const json = JSON.parse(content)
+
+            // Flatten JSON and extract terms
+            const terms: ExtractedTerm[] = []
+            const flatten = (obj: any, prefix = '') => {
+                for (const key in obj) {
+                    const fullKey = prefix ? `${prefix}.${key}` : key
+                    const val = obj[key]
+
+                    if (typeof val === 'object' && val !== null) {
+                        flatten(val, fullKey)
+                    } else if (typeof val === 'string') {
+                        // Smart filter logic
+                        const keyLower = key.toLowerCase()
+                        const lastSegment = fullKey.split('.').pop() || ''
+
+                        // Skip descriptions, hints, long texts
+                        if (/desc|hint|description|message|info|help/i.test(keyLower)) continue
+                        if (val.length > 30) continue
+                        if (val.includes('{') || val.includes('<')) continue
+                        if (!val.trim()) continue
+
+                        // Use last non-Label/Name segment as the "original term"
+                        // e.g. for "Health.Label": "生命值", use "Health" as term
+                        let termName = lastSegment
+                        if (/^(label|name|single|plural|short)$/i.test(lastSegment)) {
+                            const parts = fullKey.split('.')
+                            termName = parts.length > 1 ? parts[parts.length - 2] : lastSegment
+                        }
+
+                        // Skip if termName looks like a variable/code
+                        if (/^[a-z]{1,2}$/.test(termName)) continue // e.g. "l", "c"
+                        if (/^(Short|Abbr)$/i.test(termName)) continue
+
+                        terms.push({
+                            key: termName,
+                            value: val,
+                            selected: true
+                        })
+                    }
+                }
+            }
+            flatten(json)
+
+            // Deduplicate by key (keep first occurrence)
+            const seen = new Set<string>()
+            const uniqueTerms = terms.filter(t => {
+                if (seen.has(t.key)) return false
+                seen.add(t.key)
+                return true
+            })
+
+            setExtractedTerms(uniqueTerms)
+            setExtractFileName(filePath.split(/[\\/]/).pop() || 'file')
+            setShowExtractModal(true)
+
+        } catch (error) {
+            console.error(error)
+            alert(`${t.extractFailed || 'Failed to extract terms'}: ${error}`)
+        }
+    }
+
+    const handleImportExtracted = () => {
+        const selected = extractedTerms.filter(t => t.selected)
+        if (selected.length === 0) {
+            alert(t.noTermsSelected || 'No terms selected')
+            return
+        }
+        const newEntries = selected.map(t => ({
+            term: t.key,
+            definition: t.value,
+            context: 'Extracted'
+        }))
+        setEntries(prev => [...prev, ...newEntries])
+        setShowExtractModal(false)
+        const message = (t.importedTerms || 'Imported {count} terms').replace('{count}', selected.length.toString())
+        alert(message)
+    }
+
+    const toggleAllExtracted = (selectAll: boolean) => {
+        setExtractedTerms(prev => prev.map(t => ({ ...t, selected: selectAll })))
+    }
+
+    const toggleExtractedTerm = (index: number) => {
+        setExtractedTerms(prev => {
+            const next = [...prev]
+            next[index] = { ...next[index], selected: !next[index].selected }
+            return next
+        })
+    }
+
     const addEntry = () => {
         setEntries(prev => [{ term: '', definition: '', context: '' }, ...prev])
     }
@@ -169,12 +317,12 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
         e.definition.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    // Performance optimization: limit rendered entries
-    const MAX_DISPLAY = 100
-    const displayedEntries = filteredEntries.slice(0, MAX_DISPLAY)
-    const hasMore = filteredEntries.length > MAX_DISPLAY
-
-    if (!isOpen) return null
+    // Performance optimization: paginated entries
+    const PAGE_SIZE = 100
+    const totalPages = Math.ceil(filteredEntries.length / PAGE_SIZE)
+    const startIndex = (currentPage - 1) * PAGE_SIZE
+    const displayedEntries = filteredEntries.slice(startIndex, startIndex + PAGE_SIZE)
+    const hasMore = filteredEntries.length > PAGE_SIZE
 
     if (!isOpen) return null
 
@@ -246,7 +394,13 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
                 </div>
 
                 {/* Import/Export Actions Tiny */}
-                <div className="px-2 py-1 flex justify-end">
+                <div className="px-2 py-1 flex justify-end gap-2">
+                    <button onClick={handleLoadPreset} disabled={!selectedGlossary} className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1" title={t.pf1ePresetTitle || 'Load PF1e Core Glossary'}>
+                        <Book size={12} /> PF1e
+                    </button>
+                    <button onClick={handleExtractFromFile} disabled={!selectedGlossary} className="text-xs text-emerald-500 hover:text-emerald-400 flex items-center gap-1" title={t.extractFromFile || 'Extract terms from translated file'}>
+                        <FileSearch size={12} /> {t.extractTerms || '提取'}
+                    </button>
                     <button onClick={handleImport} disabled={!selectedGlossary} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
                         <Upload size={12} /> {t.import}
                     </button>
@@ -254,50 +408,69 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
 
                 {/* List */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
-                    {displayedEntries.map((entry, i) => (
-                        <div key={i} className="bg-white/40 p-3 rounded-xl border border-white/50 hover:border-purple-300 transition-colors group relative backdrop-blur-sm shadow-sm">
-                            <div className="mb-2">
-                                <input
-                                    value={entry.term}
-                                    onChange={(e) => updateEntry(i, 'term', e.target.value)}
-                                    placeholder="术语"
-                                    className="w-full bg-transparent font-bold text-slate-700 text-sm border-none p-0 focus:ring-0 placeholder-slate-400"
-                                />
+                    {displayedEntries.map((entry, i) => {
+                        const actualIndex = startIndex + i
+                        return (
+                            <div key={actualIndex} className="bg-white/40 p-3 rounded-xl border border-white/50 hover:border-purple-300 transition-colors group relative backdrop-blur-sm shadow-sm">
+                                <div className="mb-2">
+                                    <input
+                                        value={entry.term}
+                                        onChange={(e) => updateEntry(actualIndex, 'term', e.target.value)}
+                                        placeholder="术语"
+                                        className="w-full bg-transparent font-bold text-slate-700 text-sm border-none p-0 focus:ring-0 placeholder-slate-400"
+                                    />
+                                </div>
+                                <div className="mb-2">
+                                    <textarea
+                                        value={entry.definition}
+                                        onChange={(e) => updateEntry(actualIndex, 'definition', e.target.value)}
+                                        placeholder="译文"
+                                        rows={1}
+                                        className="w-full bg-white/60 rounded-lg px-2 py-1 text-emerald-600 text-sm border border-white/40 resize-y focus:ring-1 focus:ring-purple-300 focus:border-purple-300"
+                                        style={{ minHeight: '28px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <input
+                                        value={entry.context || ''}
+                                        onChange={(e) => updateEntry(actualIndex, 'context', e.target.value)}
+                                        placeholder="上下文..."
+                                        className="w-full bg-transparent text-slate-400 text-xs italic border-none p-0 focus:ring-0 placeholder-slate-300"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => removeEntry(actualIndex)}
+                                    className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-red-50"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
                             </div>
-                            <div className="mb-2">
-                                <textarea
-                                    value={entry.definition}
-                                    onChange={(e) => updateEntry(i, 'definition', e.target.value)}
-                                    placeholder="译文"
-                                    rows={1}
-                                    className="w-full bg-white/60 rounded-lg px-2 py-1 text-emerald-600 text-sm border border-white/40 resize-y focus:ring-1 focus:ring-purple-300 focus:border-purple-300"
-                                    style={{ minHeight: '28px' }}
-                                />
-                            </div>
-                            <div>
-                                <input
-                                    value={entry.context || ''}
-                                    onChange={(e) => updateEntry(i, 'context', e.target.value)}
-                                    placeholder="上下文..."
-                                    className="w-full bg-transparent text-slate-400 text-xs italic border-none p-0 focus:ring-0 placeholder-slate-300"
-                                />
-                            </div>
-                            <button
-                                onClick={() => removeEntry(i)}
-                                className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-red-50"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    ))}
+                        )
+                    })}
                     {displayedEntries.length === 0 && (
                         <div className="text-center text-slate-400 text-xs py-4">
                             {selectedGlossary ? (searchTerm ? t.noMatches : '无条目') : t.selectOrCreate}
                         </div>
                     )}
                     {hasMore && (
-                        <div className="text-center text-slate-500 text-xs py-2">
-                            显示前 {MAX_DISPLAY} 条，共 {filteredEntries.length} 条。请使用搜索缩小范围。
+                        <div className="flex items-center justify-center gap-2 text-sm py-2 border-t border-slate-100">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage <= 1}
+                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                上一页
+                            </button>
+                            <span className="text-slate-500">
+                                {currentPage} / {totalPages} 页 (共 {filteredEntries.length} 条)
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage >= totalPages}
+                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                下一页
+                            </button>
                         </div>
                     )}
                 </div>
@@ -406,6 +579,24 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
                             </h2>
                             <div className="flex items-center gap-3">
                                 <button
+                                    onClick={handleLoadPreset}
+                                    disabled={!selectedGlossary}
+                                    className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-600 font-bold rounded-xl border border-purple-100 hover:border-purple-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                                    title={t.pf1ePresetTitle || 'Load PF1e Core Glossary'}
+                                >
+                                    <Book size={16} />
+                                    PF1e
+                                </button>
+                                <button
+                                    onClick={handleExtractFromFile}
+                                    disabled={!selectedGlossary}
+                                    className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold rounded-xl border border-emerald-100 hover:border-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                                    title={t.extractFromFile || 'Extract terms from translated file'}
+                                >
+                                    <FileSearch size={16} />
+                                    {t.extractTerms || '提取'}
+                                </button>
+                                <button
                                     onClick={handleImport}
                                     disabled={!selectedGlossary}
                                     className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold rounded-xl border border-blue-100 hover:border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
@@ -466,45 +657,76 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
                                         </div>
                                     ) : (
                                         <>
-                                            {displayedEntries.map((entry, i) => (
-                                                <div key={i} className="grid grid-cols-12 gap-4 items-center bg-white p-4 rounded-xl border border-slate-100 hover:border-purple-200 hover:shadow-sm transition-all group">
-                                                    <div className="col-span-3">
-                                                        <input
-                                                            value={entry.term}
-                                                            onChange={(e) => updateEntry(i, 'term', e.target.value)}
-                                                            placeholder="Fireball"
-                                                            className="bg-transparent border-none text-slate-700 w-full focus:ring-0 placeholder-slate-300 font-bold"
-                                                        />
+                                            {displayedEntries.map((entry, i) => {
+                                                const actualIndex = startIndex + i
+                                                return (
+                                                    <div key={actualIndex} className="grid grid-cols-12 gap-4 items-center bg-white p-4 rounded-xl border border-slate-100 hover:border-purple-200 hover:shadow-sm transition-all group">
+                                                        <div className="col-span-3">
+                                                            <input
+                                                                value={entry.term}
+                                                                onChange={(e) => updateEntry(actualIndex, 'term', e.target.value)}
+                                                                placeholder="Fireball"
+                                                                className="bg-transparent border-none text-slate-700 w-full focus:ring-0 placeholder-slate-300 font-bold"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-4">
+                                                            <input
+                                                                value={entry.definition}
+                                                                onChange={(e) => updateEntry(actualIndex, 'definition', e.target.value)}
+                                                                placeholder="火球术"
+                                                                className="bg-transparent border-none text-emerald-600 w-full focus:ring-0 placeholder-slate-300 font-medium"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-4">
+                                                            <input
+                                                                value={entry.context || ''}
+                                                                onChange={(e) => updateEntry(actualIndex, 'context', e.target.value)}
+                                                                placeholder={t.context}
+                                                                className="bg-transparent border-none text-slate-400 w-full focus:ring-0 placeholder-slate-300 italic text-sm"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-1 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() => removeEntry(actualIndex)}
+                                                                className="p-2 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <div className="col-span-4">
-                                                        <input
-                                                            value={entry.definition}
-                                                            onChange={(e) => updateEntry(i, 'definition', e.target.value)}
-                                                            placeholder="火球术"
-                                                            className="bg-transparent border-none text-emerald-600 w-full focus:ring-0 placeholder-slate-300 font-medium"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-4">
-                                                        <input
-                                                            value={entry.context || ''}
-                                                            onChange={(e) => updateEntry(i, 'context', e.target.value)}
-                                                            placeholder={t.context}
-                                                            className="bg-transparent border-none text-slate-400 w-full focus:ring-0 placeholder-slate-300 italic text-sm"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-1 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            onClick={() => removeEntry(i)}
-                                                            className="p-2 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                )
+                                            })}
                                             {hasMore && (
-                                                <div className="text-center text-slate-400 text-sm py-4 bg-amber-50 rounded-xl border border-amber-100">
-                                                    显示前 {MAX_DISPLAY} 条，共 {filteredEntries.length} 条。请使用搜索缩小范围。
+                                                <div className="flex items-center justify-center gap-3 text-sm py-4 bg-slate-50 rounded-xl border border-slate-100">
+                                                    <button
+                                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                        disabled={currentPage <= 1}
+                                                        className="px-3 py-1.5 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                                    >
+                                                        ← 上一页
+                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-slate-500">第</span>
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            max={totalPages}
+                                                            value={currentPage}
+                                                            onChange={(e) => {
+                                                                const page = parseInt(e.target.value) || 1
+                                                                setCurrentPage(Math.min(Math.max(1, page), totalPages))
+                                                            }}
+                                                            className="w-14 px-2 py-1 text-center border border-slate-200 rounded-lg text-sm focus:ring-1 focus:ring-purple-300"
+                                                        />
+                                                        <span className="text-slate-500">页 / 共 {totalPages} 页 ({filteredEntries.length} 条)</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                        disabled={currentPage >= totalPages}
+                                                        className="px-3 py-1.5 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                                    >
+                                                        下一页 →
+                                                    </button>
                                                 </div>
                                             )}
                                         </>
@@ -519,7 +741,93 @@ export function GlossaryManager({ isOpen, onClose, inline = false }: GlossaryMan
                         )}
                     </div>
                 </div>
-            </div>
+            </div >
+
+            {/* Extraction Preview Modal */}
+            {
+                showExtractModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+                        <div className="bg-white rounded-2xl shadow-2xl w-[700px] max-h-[80vh] flex flex-col overflow-hidden border border-slate-200">
+                            {/* Header */}
+                            <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-slate-200 flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                        <FileSearch size={20} className="text-emerald-500" />
+                                        {t.extractFromFile || '从文件提取术语'}
+                                    </h3>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        {extractFileName} · {t.foundTerms?.replace('{count}', extractedTerms.length.toString()) || `已识别 ${extractedTerms.length} 条术语`}
+                                    </p>
+                                </div>
+                                <button onClick={() => setShowExtractModal(false)} className="p-2 hover:bg-white/50 rounded-xl transition-colors">
+                                    <X size={20} className="text-slate-400" />
+                                </button>
+                            </div>
+
+                            {/* Warning Tip */}
+                            <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 text-amber-700 text-xs flex items-start gap-2">
+                                <span className="text-amber-500 mt-0.5">⚠️</span>
+                                <span>自动提取的术语可能不完全准确，Key 和 Value 的对应关系需要您手动甄别后再导入。</span>
+                            </div>
+
+                            {/* Selection Controls */}
+                            <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
+                                <button onClick={() => toggleAllExtracted(true)} className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1">
+                                    <CheckSquare size={14} /> {t.selectAll || '全选'}
+                                </button>
+                                <button onClick={() => toggleAllExtracted(false)} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                                    <Square size={14} /> {t.deselectAll || '取消全选'}
+                                </button>
+                                <span className="ml-auto text-xs text-slate-400">
+                                    {t.selectedCount?.replace('{count}', extractedTerms.filter(t => t.selected).length.toString()) || `已选 ${extractedTerms.filter(t => t.selected).length} 条`}
+                                </span>
+                            </div>
+
+                            {/* Terms List */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+                                <div className="space-y-1">
+                                    {extractedTerms.map((term, i) => (
+                                        <div
+                                            key={i}
+                                            onClick={() => toggleExtractedTerm(i)}
+                                            className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all ${term.selected
+                                                ? 'bg-emerald-50 border border-emerald-200'
+                                                : 'bg-white/50 border border-transparent hover:bg-slate-50'
+                                                }`}
+                                        >
+                                            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${term.selected ? 'bg-emerald-500 text-white' : 'bg-slate-200'
+                                                }`}>
+                                                {term.selected && <CheckSquare size={14} />}
+                                            </div>
+                                            <span className="font-mono text-sm text-slate-700 min-w-[120px]">{term.key}</span>
+                                            <span className="text-slate-400">→</span>
+                                            <span className="text-emerald-600 text-sm flex-1">{term.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setShowExtractModal(false)}
+                                    className="px-4 py-2 text-slate-500 hover:bg-white rounded-xl transition-colors font-medium"
+                                >
+                                    {t.cancel || '取消'}
+                                </button>
+                                <button
+                                    onClick={handleImportExtracted}
+                                    disabled={extractedTerms.filter(t => t.selected).length === 0}
+                                    className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2"
+                                >
+                                    <Upload size={16} />
+                                    {t.importSelected?.replace('{count}', extractedTerms.filter(t => t.selected).length.toString()) || `导入选中 (${extractedTerms.filter(t => t.selected).length})`}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
         </>
     )
 }

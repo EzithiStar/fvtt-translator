@@ -230,6 +230,23 @@ const translations = {
         exportFailed: 'Export failed',
         moduleIdRequired: 'Module ID is required',
         scriptError: 'Error: {error}\n(Please ensure "scripts" folder exists)',
+
+        // PF1e Glossary Preset
+        pf1ePresetTitle: 'Load PF1e Core Glossary',
+        pf1ePresetConfirm: 'Load Pathfinder 1e Core Glossary? This will be merged into the current glossary.',
+        pf1eLoadedTerms: 'Loaded {count} terms.',
+        pf1eLoadFailed: 'Failed to load preset',
+
+        // Extraction from Translated File
+        extractFromFile: 'Extract from File',
+        extractTerms: 'Extract',
+        extractFailed: 'Failed to extract terms',
+        foundTerms: 'Found {count} terms',
+        selectedCount: 'Selected: {count}',
+        noTermsSelected: 'No terms selected',
+        importSelected: 'Import Selected ({count})',
+        selectAll: 'Select All',
+        deselectAll: 'Deselect All',
     },
     zh: {
         appTitle: 'FVTT 翻译器',
@@ -447,6 +464,23 @@ const translations = {
         exportFailed: '导出失败',
         moduleIdRequired: '必须填写模组 ID (Module ID)',
         scriptError: '错误: {error}\n(请确保 "scripts" 文件夹存在)',
+
+        // PF1e Glossary Preset
+        pf1ePresetTitle: '加载 PF1e 核心术语库',
+        pf1ePresetConfirm: '加载 Pathfinder 1e 核心术语库？这些术语将合并到当前术语表中。',
+        pf1eLoadedTerms: '已加载 {count} 条术语。',
+        pf1eLoadFailed: '加载预设失败',
+
+        // Extraction from Translated File
+        extractFromFile: '从文件提取术语',
+        extractTerms: '提取',
+        extractFailed: '提取术语失败',
+        foundTerms: '已识别 {count} 条术语',
+        selectedCount: '已选 {count} 条',
+        noTermsSelected: '未选中任何术语',
+        importSelected: '导入选中 ({count})',
+        selectAll: '全选',
+        deselectAll: '取消全选',
     }
 }
 

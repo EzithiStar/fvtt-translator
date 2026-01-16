@@ -1,8 +1,10 @@
+import { D20Icon } from '../D20Icon'
 import { useI18n } from '../../lib/i18n'
 import { Github, Globe, Heart } from 'lucide-react'
 
 // 版本号由 Vite 在构建时从 package.json 注入
 declare const __APP_VERSION__: string
+
 
 export function SettingsAbout() {
     const { t, lang } = useI18n()
@@ -11,8 +13,10 @@ export function SettingsAbout() {
     return (
         <div className="space-y-8 animate-fade-in text-center pt-8">
             <div className="space-y-4">
-                <div className="w-28 h-28 bg-gradient-to-br from-blue-400 to-purple-400 rounded-[2.5rem] mx-auto flex items-center justify-center shadow-xl shadow-blue-200 mb-6 transform hover:rotate-6 transition-transform duration-500">
-                    <span className="text-5xl filter drop-shadow-md">🎲</span>
+                <div className="w-28 h-28 mx-auto flex items-center justify-center mb-6">
+                    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-400 rounded-[2.5rem] flex items-center justify-center shadow-xl shadow-blue-200">
+                        <D20Icon />
+                    </div>
                 </div>
                 <h2 className="text-3xl font-extrabold text-slate-700 tracking-tight">
                     {t.appTitle}

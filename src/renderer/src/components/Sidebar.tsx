@@ -12,7 +12,22 @@ interface TreeNode {
 
 // 从平铺文件列表构建树结构
 function buildTree(files: string[], projectPath: string | null): TreeNode[] {
-    if (!projectPath || files.length === 0) return []
+    if (files.length === 0) return []
+
+    // 如果没有 projectPath（单个文件模式），直接返回平铺的文件列表
+    if (!projectPath) {
+        return files.map(file => {
+            const normalizedFile = file.replace(/\\/g, '/')
+            const parts = normalizedFile.split('/')
+            const fileName = parts[parts.length - 1]
+            return {
+                name: fileName,
+                path: file,
+                isFolder: false,
+                children: []
+            }
+        })
+    }
 
     const root: TreeNode[] = []
     const normalizedBase = projectPath.replace(/\\/g, '/')
